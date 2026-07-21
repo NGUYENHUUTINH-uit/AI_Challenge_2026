@@ -1,0 +1,50 @@
+# ===== CORE AI / EMBEDDING =====
+# CLIP - encode image & text thành vector
+# ⚠️ Cài riêng: pip install git+https://github.com/openai/CLIP.git
+ftfy                      # dependency của CLIP
+regex                     # dependency của CLIP
+
+# Multilingual CLIP (cho query tiếng Việt)
+sentence-transformers
+
+# ===== VECTOR DATABASE =====
+faiss-cpu
+# Nếu có GPU: faiss-gpu (cài riêng, không dùng pip thông thường)
+
+# ===== OBJECT DETECTION =====
+# ⚠️ torch/torchvision: cài theo CUDA của máy tại https://pytorch.org
+# CPU-only (không có GPU):
+torch
+torchvision
+# FasterRCNN có sẵn trong torchvision
+
+# ===== OCR =====
+paddleocr
+paddlepaddle
+
+# ===== SPEECH RECOGNITION =====
+openai-whisper
+
+# ===== BACKEND API =====
+fastapi
+uvicorn[standard]
+python-multipart          # upload file ảnh qua API
+
+# ===== LLM APIs =====
+openai                    # GPT / Claude via API
+anthropic                 # Claude trực tiếp
+google-generativeai       # Gemini
+
+# ===== DATA PROCESSING =====
+numpy
+opencv-python
+Pillow
+tqdm
+pandas
+
+# ===== TESTING =====
+pytest
+httpx                     # test FastAPI async
+
+# ===== UTILITIES =====
+python-dotenv             # đọc .env (API keys)

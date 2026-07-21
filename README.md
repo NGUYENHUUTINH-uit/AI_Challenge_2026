@@ -128,3 +128,46 @@
 - [ ] **C**: Hệ thống API FastAPI vận hành mượt mà, chịu tải tốt, phân tách xử lý payload linh hoạt (Text/Image input), cấu hình kịch bản cứu hộ (fallback) sẵn sàng.
 - [ ] **D**: Giao diện UI đáp ứng tiêu chuẩn phản hồi nhanh, hỗ trợ đầy đủ các tính năng tương tác vòng lặp (gợi ý concept thu hẹp/mở rộng tìm kiếm, gom cụm hiển thị video, phát đúng khung thời gian).
 - [ ] **Cả đội**: Nắm vững chiến thuật đặt câu hỏi cốt lõi theo nguyên lý thu hẹp phễu thông tin: `Thời gian` $\rightarrow$ `Địa điểm` $\rightarrow$ `Đối tượng hành động` $\rightarrow$ `Cảnh vật/Vật thể chi tiết xung quanh`.
+
+## 6. Hướng Dẫn Cài Đặt Môi Trường
+
+### Yêu cầu
+- Python 3.10+ đã được cài đặt
+- Git
+
+### Cài đặt nhanh (Windows)
+
+**Bước 1**: Clone repo về máy
+
+```bash
+cd AI_Challenge_2026
+```
+
+**Bước 2**: Chạy script cài đặt tự động
+
+```bash
+setup.bat
+```
+
+Script sẽ tự động:
+1. Tạo môi trường ảo `venv/`
+2. Kích hoạt `venv`
+3. Cài CLIP từ GitHub
+4. Cài toàn bộ thư viện trong `requirements.txt`
+
+**Bước 3**: Mỗi lần làm việc, kích hoạt lại venv:
+
+```bash
+venv\Scripts\activate.bat
+```
+
+### Lưu ý
+
+> ⚠️ **torch / CUDA**: Nếu máy có GPU, cài `torch` theo đúng phiên bản CUDA tại [https://pytorch.org](https://pytorch.org) **trước** khi chạy `setup.bat`.
+
+> ⚠️ **API Keys**: Tạo file `.env` ở thư mục gốc và điền các key cần thiết (không commit file này lên Git):
+> ```
+> OPENAI_API_KEY=sk-...
+> ANTHROPIC_API_KEY=...
+> GOOGLE_API_KEY=...
+> ```
