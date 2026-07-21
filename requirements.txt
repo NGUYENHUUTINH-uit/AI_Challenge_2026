@@ -18,12 +18,12 @@ torch
 torchvision
 # FasterRCNN có sẵn trong torchvision
 
-# ===== OCR =====
-paddleocr
-paddlepaddle
+# ===== OCR (Tùy chọn - Tuần 3, chưa hỗ trợ Python 3.14) =====
+# paddleocr
+# paddlepaddle
 
-# ===== SPEECH RECOGNITION =====
-openai-whisper
+# ===== SPEECH RECOGNITION (Tùy chọn - Tuần 3) =====
+# openai-whisper
 
 # ===== BACKEND API =====
 fastapi

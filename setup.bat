@@ -12,5 +12,5 @@ echo [4/4] Cai cac thu vien con lai...
 pip install -r requirements.txt
 
 echo.
-echo ✅ Xong! Chay "venv\Scripts\activate.bat" de bat dau lam viec.
+echo  Xong! Chay "venv\Scripts\activate.bat" de bat dau lam viec.
 pause
