@@ -1,0 +1,154 @@
+{
+    "video0_frame_0.jpg": {
+        "video_id": "video0",
+        "timestamp": 0.0
+    },
+    "video0_frame_1.jpg": {
+        "video_id": "video0",
+        "timestamp": 1.0
+    },
+    "video0_frame_2.jpg": {
+        "video_id": "video0",
+        "timestamp": 2.0
+    },
+    "video0_frame_3.jpg": {
+        "video_id": "video0",
+        "timestamp": 3.0
+    },
+    "video0_frame_4.jpg": {
+        "video_id": "video0",
+        "timestamp": 4.0
+    },
+    "video0_frame_5.jpg": {
+        "video_id": "video0",
+        "timestamp": 5.0
+    },
+    "video0_frame_6.jpg": {
+        "video_id": "video0",
+        "timestamp": 6.0
+    },
+    "video0_frame_7.jpg": {
+        "video_id": "video0",
+        "timestamp": 7.0
+    },
+    "video0_frame_8.jpg": {
+        "video_id": "video0",
+        "timestamp": 8.0
+    },
+    "video0_frame_9.jpg": {
+        "video_id": "video0",
+        "timestamp": 9.0
+    },
+    "video0_frame_10.jpg": {
+        "video_id": "video0",
+        "timestamp": 10.0
+    },
+    "video0_frame_11.jpg": {
+        "video_id": "video0",
+        "timestamp": 11.0
+    },
+    "video0_frame_12.jpg": {
+        "video_id": "video0",
+        "timestamp": 12.0
+    },
+    "sample_frame_0.jpg": {
+        "video_id": "sample",
+        "timestamp": 0.0
+    },
+    "sample_frame_1.jpg": {
+        "video_id": "sample",
+        "timestamp": 1.0
+    },
+    "sample_frame_2.jpg": {
+        "video_id": "sample",
+        "timestamp": 2.0
+    },
+    "sample_frame_3.jpg": {
+        "video_id": "sample",
+        "timestamp": 3.0
+    },
+    "sample_frame_4.jpg": {
+        "video_id": "sample",
+        "timestamp": 4.0
+    },
+    "sample_frame_5.jpg": {
+        "video_id": "sample",
+        "timestamp": 5.0
+    },
+    "sample_frame_6.jpg": {
+        "video_id": "sample",
+        "timestamp": 6.0
+    },
+    "sample_frame_7.jpg": {
+        "video_id": "sample",
+        "timestamp": 7.0
+    },
+    "sample_frame_8.jpg": {
+        "video_id": "sample",
+        "timestamp": 8.0
+    },
+    "sample_frame_9.jpg": {
+        "video_id": "sample",
+        "timestamp": 9.0
+    },
+    "sample_frame_10.jpg": {
+        "video_id": "sample",
+        "timestamp": 10.0
+    },
+    "sample_frame_11.jpg": {
+        "video_id": "sample",
+        "timestamp": 11.0
+    },
+    "sample_frame_12.jpg": {
+        "video_id": "sample",
+        "timestamp": 12.0
+    },
+    "video7014_frame_0.jpg": {
+        "video_id": "video7014",
+        "timestamp": 0.0
+    },
+    "video7014_frame_1.jpg": {
+        "video_id": "video7014",
+        "timestamp": 1.0
+    },
+    "video7014_frame_2.jpg": {
+        "video_id": "video7014",
+        "timestamp": 2.0
+    },
+    "video7014_frame_3.jpg": {
+        "video_id": "video7014",
+        "timestamp": 3.0
+    },
+    "video7014_frame_4.jpg": {
+        "video_id": "video7014",
+        "timestamp": 4.0
+    },
+    "video7014_frame_5.jpg": {
+        "video_id": "video7014",
+        "timestamp": 5.0
+    },
+    "video7014_frame_6.jpg": {
+        "video_id": "video7014",
+        "timestamp": 6.0
+    },
+    "video7014_frame_7.jpg": {
+        "video_id": "video7014",
+        "timestamp": 7.0
+    },
+    "video7014_frame_8.jpg": {
+        "video_id": "video7014",
+        "timestamp": 8.0
+    },
+    "video7014_frame_9.jpg": {
+        "video_id": "video7014",
+        "timestamp": 9.0
+    },
+    "video7014_frame_10.jpg": {
+        "video_id": "video7014",
+        "timestamp": 10.0
+    },
+    "video7014_frame_11.jpg": {
+        "video_id": "video7014",
+        "timestamp": 11.0
+    }
+}
