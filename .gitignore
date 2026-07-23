@@ -28,6 +28,7 @@ data/sample_videos/
 # CLIP features & FAISS index (sinh ra boi indexer.py)
 *.npy
 *.faiss
+*.csv
 
 # Model weights
 *.pt
