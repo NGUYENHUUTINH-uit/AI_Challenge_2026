@@ -150,5 +150,141 @@
     "video7014_frame_11.jpg": {
         "video_id": "video7014",
         "timestamp": 11.0
+    },
+    "video7020_frame_0.jpg": {
+        "video_id": "video7020",
+        "timestamp": 0.0
+    },
+    "video7020_frame_1.jpg": {
+        "video_id": "video7020",
+        "timestamp": 1.0
+    },
+    "video7020_frame_2.jpg": {
+        "video_id": "video7020",
+        "timestamp": 2.0
+    },
+    "video7020_frame_3.jpg": {
+        "video_id": "video7020",
+        "timestamp": 3.0
+    },
+    "video7020_frame_4.jpg": {
+        "video_id": "video7020",
+        "timestamp": 4.0
+    },
+    "video7020_frame_5.jpg": {
+        "video_id": "video7020",
+        "timestamp": 5.0
+    },
+    "video7020_frame_6.jpg": {
+        "video_id": "video7020",
+        "timestamp": 6.0
+    },
+    "video7020_frame_7.jpg": {
+        "video_id": "video7020",
+        "timestamp": 7.0
+    },
+    "video7020_frame_8.jpg": {
+        "video_id": "video7020",
+        "timestamp": 8.0
+    },
+    "video7020_frame_9.jpg": {
+        "video_id": "video7020",
+        "timestamp": 9.0
+    },
+    "video7020_frame_10.jpg": {
+        "video_id": "video7020",
+        "timestamp": 10.0
+    },
+    "video7109_frame_0.jpg": {
+        "video_id": "video7109",
+        "timestamp": 0.0
+    },
+    "video7109_frame_1.jpg": {
+        "video_id": "video7109",
+        "timestamp": 1.0
+    },
+    "video7109_frame_2.jpg": {
+        "video_id": "video7109",
+        "timestamp": 2.0
+    },
+    "video7109_frame_3.jpg": {
+        "video_id": "video7109",
+        "timestamp": 3.0
+    },
+    "video7109_frame_4.jpg": {
+        "video_id": "video7109",
+        "timestamp": 4.0
+    },
+    "video7109_frame_5.jpg": {
+        "video_id": "video7109",
+        "timestamp": 5.0
+    },
+    "video7109_frame_6.jpg": {
+        "video_id": "video7109",
+        "timestamp": 6.0
+    },
+    "video7109_frame_7.jpg": {
+        "video_id": "video7109",
+        "timestamp": 7.0
+    },
+    "video7109_frame_8.jpg": {
+        "video_id": "video7109",
+        "timestamp": 8.0
+    },
+    "video7109_frame_9.jpg": {
+        "video_id": "video7109",
+        "timestamp": 9.0
+    },
+    "video7123_frame_0.jpg": {
+        "video_id": "video7123",
+        "timestamp": 0.0
+    },
+    "video7123_frame_1.jpg": {
+        "video_id": "video7123",
+        "timestamp": 1.0
+    },
+    "video7123_frame_2.jpg": {
+        "video_id": "video7123",
+        "timestamp": 2.0
+    },
+    "video7123_frame_3.jpg": {
+        "video_id": "video7123",
+        "timestamp": 3.0
+    },
+    "video7123_frame_4.jpg": {
+        "video_id": "video7123",
+        "timestamp": 4.0
+    },
+    "video7123_frame_5.jpg": {
+        "video_id": "video7123",
+        "timestamp": 5.0
+    },
+    "video7123_frame_6.jpg": {
+        "video_id": "video7123",
+        "timestamp": 6.0
+    },
+    "video7123_frame_7.jpg": {
+        "video_id": "video7123",
+        "timestamp": 7.0
+    },
+    "video7123_frame_8.jpg": {
+        "video_id": "video7123",
+        "timestamp": 8.0
+    },
+    "video7123_frame_9.jpg": {
+        "video_id": "video7123",
+        "timestamp": 9.0
+    },
+    "video7123_frame_10.jpg": {
+        "video_id": "video7123",
+        "timestamp": 10.0
+    },
+    "video7123_frame_11.jpg": {
+        "video_id": "video7123",
+        "timestamp": 11.0
+    },
+    "video7123_frame_12.jpg": {
+        "video_id": "video7123",
+        "timestamp": 12.0
     }
 }
