@@ -29,6 +29,7 @@ torchvision
 fastapi
 uvicorn[standard]
 python-multipart          # upload file ảnh qua API
+requests                  # gọi API bên ngoài / tích hợp dịch vụ HTTP
 
 # ===== LLM APIs =====
 openai                    # GPT / Claude via API
