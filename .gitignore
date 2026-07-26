@@ -22,6 +22,7 @@ build/
 
 # Keyframes (anh trich xuat tu video - co the len hang GB)
 data/processed/keyframes/
+data/processed/keyframes_clean/
 data/raw_videos/
 data/sample_videos/
 
