@@ -243,5 +243,120 @@
     "filename": "video7020_frame_9.jpg",
     "video_id": "video7020",
     "timestamp": 9.0
+  },
+  "49": {
+    "filename": "video7109_frame_0.jpg",
+    "video_id": "video7109",
+    "timestamp": 0.0
+  },
+  "50": {
+    "filename": "video7109_frame_1.jpg",
+    "video_id": "video7109",
+    "timestamp": 1.0
+  },
+  "51": {
+    "filename": "video7109_frame_2.jpg",
+    "video_id": "video7109",
+    "timestamp": 2.0
+  },
+  "52": {
+    "filename": "video7109_frame_3.jpg",
+    "video_id": "video7109",
+    "timestamp": 3.0
+  },
+  "53": {
+    "filename": "video7109_frame_4.jpg",
+    "video_id": "video7109",
+    "timestamp": 4.0
+  },
+  "54": {
+    "filename": "video7109_frame_5.jpg",
+    "video_id": "video7109",
+    "timestamp": 5.0
+  },
+  "55": {
+    "filename": "video7109_frame_6.jpg",
+    "video_id": "video7109",
+    "timestamp": 6.0
+  },
+  "56": {
+    "filename": "video7109_frame_7.jpg",
+    "video_id": "video7109",
+    "timestamp": 7.0
+  },
+  "57": {
+    "filename": "video7109_frame_8.jpg",
+    "video_id": "video7109",
+    "timestamp": 8.0
+  },
+  "58": {
+    "filename": "video7109_frame_9.jpg",
+    "video_id": "video7109",
+    "timestamp": 9.0
+  },
+  "59": {
+    "filename": "video7123_frame_0.jpg",
+    "video_id": "video7123",
+    "timestamp": 0.0
+  },
+  "60": {
+    "filename": "video7123_frame_1.jpg",
+    "video_id": "video7123",
+    "timestamp": 1.0
+  },
+  "61": {
+    "filename": "video7123_frame_10.jpg",
+    "video_id": "video7123",
+    "timestamp": 10.0
+  },
+  "62": {
+    "filename": "video7123_frame_11.jpg",
+    "video_id": "video7123",
+    "timestamp": 11.0
+  },
+  "63": {
+    "filename": "video7123_frame_12.jpg",
+    "video_id": "video7123",
+    "timestamp": 12.0
+  },
+  "64": {
+    "filename": "video7123_frame_2.jpg",
+    "video_id": "video7123",
+    "timestamp": 2.0
+  },
+  "65": {
+    "filename": "video7123_frame_3.jpg",
+    "video_id": "video7123",
+    "timestamp": 3.0
+  },
+  "66": {
+    "filename": "video7123_frame_4.jpg",
+    "video_id": "video7123",
+    "timestamp": 4.0
+  },
+  "67": {
+    "filename": "video7123_frame_5.jpg",
+    "video_id": "video7123",
+    "timestamp": 5.0
+  },
+  "68": {
+    "filename": "video7123_frame_6.jpg",
+    "video_id": "video7123",
+    "timestamp": 6.0
+  },
+  "69": {
+    "filename": "video7123_frame_7.jpg",
+    "video_id": "video7123",
+    "timestamp": 7.0
+  },
+  "70": {
+    "filename": "video7123_frame_8.jpg",
+    "video_id": "video7123",
+    "timestamp": 8.0
+  },
+  "71": {
+    "filename": "video7123_frame_9.jpg",
+    "video_id": "video7123",
+    "timestamp": 9.0
   }
 }

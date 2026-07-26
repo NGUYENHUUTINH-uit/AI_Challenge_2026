@@ -30,7 +30,7 @@ OUTPUT_FEATURES = OUTPUT_DIR / "clip_features.npy"
 OUTPUT_MAP = OUTPUT_DIR / "frame_index.json"
 OUTPUT_FAISS = OUTPUT_DIR / "index.faiss"
 
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 
 
 # ============================================================
