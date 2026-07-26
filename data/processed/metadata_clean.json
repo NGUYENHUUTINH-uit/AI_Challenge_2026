@@ -1,0 +1,650 @@
+{
+  "sample_frame_0.jpg": {
+    "video_id": "sample",
+    "timestamp": 0.0,
+    "blur_score": 235.2,
+    "brightness": 105.55,
+    "is_clean": true,
+    "scene_id": 0,
+    "is_representative": true
+  },
+  "sample_frame_1.jpg": {
+    "video_id": "sample",
+    "timestamp": 1.0,
+    "blur_score": 196.22,
+    "brightness": 96.88,
+    "is_clean": true,
+    "scene_id": 1,
+    "is_representative": true
+  },
+  "sample_frame_10.jpg": {
+    "video_id": "sample",
+    "timestamp": 10.0,
+    "blur_score": 234.37,
+    "brightness": 94.48,
+    "is_clean": true,
+    "scene_id": 9,
+    "is_representative": true
+  },
+  "sample_frame_11.jpg": {
+    "video_id": "sample",
+    "timestamp": 11.0,
+    "blur_score": 288.41,
+    "brightness": 92.09,
+    "is_clean": true,
+    "scene_id": 10,
+    "is_representative": true
+  },
+  "sample_frame_12.jpg": {
+    "video_id": "sample",
+    "timestamp": 12.0,
+    "blur_score": 174.13,
+    "brightness": 93.29,
+    "is_clean": true,
+    "scene_id": 11,
+    "is_representative": true
+  },
+  "sample_frame_2.jpg": {
+    "video_id": "sample",
+    "timestamp": 2.0,
+    "blur_score": 141.7,
+    "brightness": 88.81,
+    "is_clean": true,
+    "scene_id": 2,
+    "is_representative": true
+  },
+  "sample_frame_3.jpg": {
+    "video_id": "sample",
+    "timestamp": 3.0,
+    "blur_score": 204.18,
+    "brightness": 101.69,
+    "is_clean": true,
+    "scene_id": 3,
+    "is_representative": true
+  },
+  "sample_frame_4.jpg": {
+    "video_id": "sample",
+    "timestamp": 4.0,
+    "blur_score": 197.52,
+    "brightness": 98.25,
+    "is_clean": true,
+    "scene_id": 4,
+    "is_representative": true
+  },
+  "sample_frame_5.jpg": {
+    "video_id": "sample",
+    "timestamp": 5.0,
+    "blur_score": 195.17,
+    "brightness": 93.59,
+    "is_clean": true,
+    "scene_id": 5,
+    "is_representative": true
+  },
+  "sample_frame_6.jpg": {
+    "video_id": "sample",
+    "timestamp": 6.0,
+    "blur_score": 177.03,
+    "brightness": 84.49,
+    "is_clean": true,
+    "scene_id": 6,
+    "is_representative": true
+  },
+  "sample_frame_7.jpg": {
+    "video_id": "sample",
+    "timestamp": 7.0,
+    "blur_score": 166.39,
+    "brightness": 84.93,
+    "is_clean": true,
+    "scene_id": 6,
+    "is_representative": false
+  },
+  "sample_frame_8.jpg": {
+    "video_id": "sample",
+    "timestamp": 8.0,
+    "blur_score": 146.47,
+    "brightness": 113.57,
+    "is_clean": true,
+    "scene_id": 7,
+    "is_representative": true
+  },
+  "sample_frame_9.jpg": {
+    "video_id": "sample",
+    "timestamp": 9.0,
+    "blur_score": 229.96,
+    "brightness": 106.13,
+    "is_clean": true,
+    "scene_id": 8,
+    "is_representative": true
+  },
+  "video0_frame_0.jpg": {
+    "video_id": "video0",
+    "timestamp": 0.0,
+    "blur_score": 235.2,
+    "brightness": 105.55,
+    "is_clean": true,
+    "scene_id": 12,
+    "is_representative": true
+  },
+  "video0_frame_1.jpg": {
+    "video_id": "video0",
+    "timestamp": 1.0,
+    "blur_score": 196.22,
+    "brightness": 96.88,
+    "is_clean": true,
+    "scene_id": 13,
+    "is_representative": true
+  },
+  "video0_frame_10.jpg": {
+    "video_id": "video0",
+    "timestamp": 10.0,
+    "blur_score": 234.37,
+    "brightness": 94.48,
+    "is_clean": true,
+    "scene_id": 21,
+    "is_representative": true
+  },
+  "video0_frame_11.jpg": {
+    "video_id": "video0",
+    "timestamp": 11.0,
+    "blur_score": 288.41,
+    "brightness": 92.09,
+    "is_clean": true,
+    "scene_id": 22,
+    "is_representative": true
+  },
+  "video0_frame_12.jpg": {
+    "video_id": "video0",
+    "timestamp": 12.0,
+    "blur_score": 174.13,
+    "brightness": 93.29,
+    "is_clean": true,
+    "scene_id": 23,
+    "is_representative": true
+  },
+  "video0_frame_2.jpg": {
+    "video_id": "video0",
+    "timestamp": 2.0,
+    "blur_score": 141.7,
+    "brightness": 88.81,
+    "is_clean": true,
+    "scene_id": 14,
+    "is_representative": true
+  },
+  "video0_frame_3.jpg": {
+    "video_id": "video0",
+    "timestamp": 3.0,
+    "blur_score": 204.18,
+    "brightness": 101.69,
+    "is_clean": true,
+    "scene_id": 15,
+    "is_representative": true
+  },
+  "video0_frame_4.jpg": {
+    "video_id": "video0",
+    "timestamp": 4.0,
+    "blur_score": 197.52,
+    "brightness": 98.25,
+    "is_clean": true,
+    "scene_id": 16,
+    "is_representative": true
+  },
+  "video0_frame_5.jpg": {
+    "video_id": "video0",
+    "timestamp": 5.0,
+    "blur_score": 195.17,
+    "brightness": 93.59,
+    "is_clean": true,
+    "scene_id": 17,
+    "is_representative": true
+  },
+  "video0_frame_6.jpg": {
+    "video_id": "video0",
+    "timestamp": 6.0,
+    "blur_score": 177.03,
+    "brightness": 84.49,
+    "is_clean": true,
+    "scene_id": 18,
+    "is_representative": true
+  },
+  "video0_frame_7.jpg": {
+    "video_id": "video0",
+    "timestamp": 7.0,
+    "blur_score": 166.39,
+    "brightness": 84.93,
+    "is_clean": true,
+    "scene_id": 18,
+    "is_representative": false
+  },
+  "video0_frame_8.jpg": {
+    "video_id": "video0",
+    "timestamp": 8.0,
+    "blur_score": 146.47,
+    "brightness": 113.57,
+    "is_clean": true,
+    "scene_id": 19,
+    "is_representative": true
+  },
+  "video0_frame_9.jpg": {
+    "video_id": "video0",
+    "timestamp": 9.0,
+    "blur_score": 229.96,
+    "brightness": 106.13,
+    "is_clean": true,
+    "scene_id": 20,
+    "is_representative": true
+  },
+  "video7014_frame_0.jpg": {
+    "video_id": "video7014",
+    "timestamp": 0.0,
+    "blur_score": 440.1,
+    "brightness": 36.28,
+    "is_clean": true,
+    "scene_id": 24,
+    "is_representative": true
+  },
+  "video7014_frame_1.jpg": {
+    "video_id": "video7014",
+    "timestamp": 1.0,
+    "blur_score": 399.89,
+    "brightness": 45.76,
+    "is_clean": true,
+    "scene_id": 25,
+    "is_representative": true
+  },
+  "video7014_frame_10.jpg": {
+    "video_id": "video7014",
+    "timestamp": 10.0,
+    "blur_score": 365.27,
+    "brightness": 38.11,
+    "is_clean": true,
+    "scene_id": 34,
+    "is_representative": true
+  },
+  "video7014_frame_11.jpg": {
+    "video_id": "video7014",
+    "timestamp": 11.0,
+    "blur_score": 445.73,
+    "brightness": 45.47,
+    "is_clean": true,
+    "scene_id": 35,
+    "is_representative": true
+  },
+  "video7014_frame_2.jpg": {
+    "video_id": "video7014",
+    "timestamp": 2.0,
+    "blur_score": 378.39,
+    "brightness": 34.94,
+    "is_clean": true,
+    "scene_id": 26,
+    "is_representative": true
+  },
+  "video7014_frame_3.jpg": {
+    "video_id": "video7014",
+    "timestamp": 3.0,
+    "blur_score": 261.29,
+    "brightness": 44.92,
+    "is_clean": true,
+    "scene_id": 27,
+    "is_representative": true
+  },
+  "video7014_frame_4.jpg": {
+    "video_id": "video7014",
+    "timestamp": 4.0,
+    "blur_score": 2065.8,
+    "brightness": 50.03,
+    "is_clean": true,
+    "scene_id": 28,
+    "is_representative": true
+  },
+  "video7014_frame_5.jpg": {
+    "video_id": "video7014",
+    "timestamp": 5.0,
+    "blur_score": 163.2,
+    "brightness": 62.82,
+    "is_clean": true,
+    "scene_id": 29,
+    "is_representative": true
+  },
+  "video7014_frame_6.jpg": {
+    "video_id": "video7014",
+    "timestamp": 6.0,
+    "blur_score": 637.51,
+    "brightness": 38.3,
+    "is_clean": true,
+    "scene_id": 30,
+    "is_representative": true
+  },
+  "video7014_frame_7.jpg": {
+    "video_id": "video7014",
+    "timestamp": 7.0,
+    "blur_score": 319.98,
+    "brightness": 60.48,
+    "is_clean": true,
+    "scene_id": 31,
+    "is_representative": true
+  },
+  "video7014_frame_8.jpg": {
+    "video_id": "video7014",
+    "timestamp": 8.0,
+    "blur_score": 379.03,
+    "brightness": 49.79,
+    "is_clean": true,
+    "scene_id": 32,
+    "is_representative": true
+  },
+  "video7014_frame_9.jpg": {
+    "video_id": "video7014",
+    "timestamp": 9.0,
+    "blur_score": 418.45,
+    "brightness": 42.55,
+    "is_clean": true,
+    "scene_id": 33,
+    "is_representative": true
+  },
+  "video7020_frame_0.jpg": {
+    "video_id": "video7020",
+    "timestamp": 0.0,
+    "blur_score": 595.91,
+    "brightness": 113.82,
+    "is_clean": true,
+    "scene_id": 36,
+    "is_representative": true
+  },
+  "video7020_frame_1.jpg": {
+    "video_id": "video7020",
+    "timestamp": 1.0,
+    "blur_score": 473.69,
+    "brightness": 129.38,
+    "is_clean": true,
+    "scene_id": 37,
+    "is_representative": true
+  },
+  "video7020_frame_10.jpg": {
+    "video_id": "video7020",
+    "timestamp": 10.0,
+    "blur_score": 550.22,
+    "brightness": 142.68,
+    "is_clean": true,
+    "scene_id": 46,
+    "is_representative": true
+  },
+  "video7020_frame_2.jpg": {
+    "video_id": "video7020",
+    "timestamp": 2.0,
+    "blur_score": 498.18,
+    "brightness": 136.02,
+    "is_clean": true,
+    "scene_id": 38,
+    "is_representative": true
+  },
+  "video7020_frame_3.jpg": {
+    "video_id": "video7020",
+    "timestamp": 3.0,
+    "blur_score": 429.57,
+    "brightness": 138.06,
+    "is_clean": true,
+    "scene_id": 39,
+    "is_representative": true
+  },
+  "video7020_frame_4.jpg": {
+    "video_id": "video7020",
+    "timestamp": 4.0,
+    "blur_score": 431.86,
+    "brightness": 132.72,
+    "is_clean": true,
+    "scene_id": 40,
+    "is_representative": true
+  },
+  "video7020_frame_5.jpg": {
+    "video_id": "video7020",
+    "timestamp": 5.0,
+    "blur_score": 416.73,
+    "brightness": 130.03,
+    "is_clean": true,
+    "scene_id": 41,
+    "is_representative": true
+  },
+  "video7020_frame_6.jpg": {
+    "video_id": "video7020",
+    "timestamp": 6.0,
+    "blur_score": 130.92,
+    "brightness": 127.83,
+    "is_clean": true,
+    "scene_id": 42,
+    "is_representative": true
+  },
+  "video7020_frame_7.jpg": {
+    "video_id": "video7020",
+    "timestamp": 7.0,
+    "blur_score": 265.02,
+    "brightness": 145.91,
+    "is_clean": true,
+    "scene_id": 43,
+    "is_representative": true
+  },
+  "video7020_frame_8.jpg": {
+    "video_id": "video7020",
+    "timestamp": 8.0,
+    "blur_score": 443.01,
+    "brightness": 159.8,
+    "is_clean": true,
+    "scene_id": 44,
+    "is_representative": true
+  },
+  "video7020_frame_9.jpg": {
+    "video_id": "video7020",
+    "timestamp": 9.0,
+    "blur_score": 308.28,
+    "brightness": 158.16,
+    "is_clean": true,
+    "scene_id": 45,
+    "is_representative": true
+  },
+  "video7109_frame_0.jpg": {
+    "video_id": "video7109",
+    "timestamp": 0.0,
+    "blur_score": 558.07,
+    "brightness": 164.76,
+    "is_clean": true,
+    "scene_id": 47,
+    "is_representative": true
+  },
+  "video7109_frame_1.jpg": {
+    "video_id": "video7109",
+    "timestamp": 1.0,
+    "blur_score": 441.23,
+    "brightness": 184.07,
+    "is_clean": true,
+    "scene_id": 48,
+    "is_representative": true
+  },
+  "video7109_frame_2.jpg": {
+    "video_id": "video7109",
+    "timestamp": 2.0,
+    "blur_score": 615.27,
+    "brightness": 143.46,
+    "is_clean": true,
+    "scene_id": 49,
+    "is_representative": true
+  },
+  "video7109_frame_3.jpg": {
+    "video_id": "video7109",
+    "timestamp": 3.0,
+    "blur_score": 764.56,
+    "brightness": 109.55,
+    "is_clean": true,
+    "scene_id": 50,
+    "is_representative": true
+  },
+  "video7109_frame_4.jpg": {
+    "video_id": "video7109",
+    "timestamp": 4.0,
+    "blur_score": 329.26,
+    "brightness": 149.15,
+    "is_clean": true,
+    "scene_id": 51,
+    "is_representative": true
+  },
+  "video7109_frame_5.jpg": {
+    "video_id": "video7109",
+    "timestamp": 5.0,
+    "blur_score": 513.17,
+    "brightness": 151.68,
+    "is_clean": true,
+    "scene_id": 52,
+    "is_representative": true
+  },
+  "video7109_frame_6.jpg": {
+    "video_id": "video7109",
+    "timestamp": 6.0,
+    "blur_score": 603.69,
+    "brightness": 152.45,
+    "is_clean": true,
+    "scene_id": 53,
+    "is_representative": false
+  },
+  "video7109_frame_7.jpg": {
+    "video_id": "video7109",
+    "timestamp": 7.0,
+    "blur_score": 623.57,
+    "brightness": 151.32,
+    "is_clean": true,
+    "scene_id": 53,
+    "is_representative": true
+  },
+  "video7109_frame_8.jpg": {
+    "video_id": "video7109",
+    "timestamp": 8.0,
+    "blur_score": 644.6,
+    "brightness": 150.03,
+    "is_clean": true,
+    "scene_id": 54,
+    "is_representative": true
+  },
+  "video7109_frame_9.jpg": {
+    "video_id": "video7109",
+    "timestamp": 9.0,
+    "blur_score": 491.26,
+    "brightness": 149.24,
+    "is_clean": true,
+    "scene_id": 55,
+    "is_representative": true
+  },
+  "video7123_frame_0.jpg": {
+    "video_id": "video7123",
+    "timestamp": 0.0,
+    "blur_score": 359.62,
+    "brightness": 92.96,
+    "is_clean": true,
+    "scene_id": 56,
+    "is_representative": true
+  },
+  "video7123_frame_1.jpg": {
+    "video_id": "video7123",
+    "timestamp": 1.0,
+    "blur_score": 28.35,
+    "brightness": 128.67,
+    "is_clean": false,
+    "scene_id": null,
+    "is_representative": false
+  },
+  "video7123_frame_10.jpg": {
+    "video_id": "video7123",
+    "timestamp": 10.0,
+    "blur_score": 263.23,
+    "brightness": 109.68,
+    "is_clean": true,
+    "scene_id": 62,
+    "is_representative": true
+  },
+  "video7123_frame_11.jpg": {
+    "video_id": "video7123",
+    "timestamp": 11.0,
+    "blur_score": 201.32,
+    "brightness": 106.89,
+    "is_clean": true,
+    "scene_id": 63,
+    "is_representative": true
+  },
+  "video7123_frame_12.jpg": {
+    "video_id": "video7123",
+    "timestamp": 12.0,
+    "blur_score": 220.92,
+    "brightness": 102.88,
+    "is_clean": true,
+    "scene_id": 64,
+    "is_representative": true
+  },
+  "video7123_frame_2.jpg": {
+    "video_id": "video7123",
+    "timestamp": 2.0,
+    "blur_score": 30.32,
+    "brightness": 128.73,
+    "is_clean": false,
+    "scene_id": null,
+    "is_representative": false
+  },
+  "video7123_frame_3.jpg": {
+    "video_id": "video7123",
+    "timestamp": 3.0,
+    "blur_score": 28.45,
+    "brightness": 128.93,
+    "is_clean": false,
+    "scene_id": null,
+    "is_representative": false
+  },
+  "video7123_frame_4.jpg": {
+    "video_id": "video7123",
+    "timestamp": 4.0,
+    "blur_score": 27.92,
+    "brightness": 129.05,
+    "is_clean": false,
+    "scene_id": null,
+    "is_representative": false
+  },
+  "video7123_frame_5.jpg": {
+    "video_id": "video7123",
+    "timestamp": 5.0,
+    "blur_score": 628.64,
+    "brightness": 103.13,
+    "is_clean": true,
+    "scene_id": 57,
+    "is_representative": true
+  },
+  "video7123_frame_6.jpg": {
+    "video_id": "video7123",
+    "timestamp": 6.0,
+    "blur_score": 380.92,
+    "brightness": 105.85,
+    "is_clean": true,
+    "scene_id": 58,
+    "is_representative": true
+  },
+  "video7123_frame_7.jpg": {
+    "video_id": "video7123",
+    "timestamp": 7.0,
+    "blur_score": 445.86,
+    "brightness": 108.66,
+    "is_clean": true,
+    "scene_id": 59,
+    "is_representative": true
+  },
+  "video7123_frame_8.jpg": {
+    "video_id": "video7123",
+    "timestamp": 8.0,
+    "blur_score": 349.25,
+    "brightness": 110.48,
+    "is_clean": true,
+    "scene_id": 60,
+    "is_representative": true
+  },
+  "video7123_frame_9.jpg": {
+    "video_id": "video7123",
+    "timestamp": 9.0,
+    "blur_score": 326.1,
+    "brightness": 101.95,
+    "is_clean": true,
+    "scene_id": 61,
+    "is_representative": true
+  }
+}

@@ -1,0 +1,546 @@
+{
+  "0": {
+    "filename": "sample_frame_0.jpg",
+    "video_id": "sample",
+    "timestamp": 0.0,
+    "scene_id": 0,
+    "is_representative": true,
+    "blur_score": 235.2
+  },
+  "1": {
+    "filename": "sample_frame_1.jpg",
+    "video_id": "sample",
+    "timestamp": 1.0,
+    "scene_id": 1,
+    "is_representative": true,
+    "blur_score": 196.22
+  },
+  "2": {
+    "filename": "sample_frame_10.jpg",
+    "video_id": "sample",
+    "timestamp": 10.0,
+    "scene_id": 9,
+    "is_representative": true,
+    "blur_score": 234.37
+  },
+  "3": {
+    "filename": "sample_frame_11.jpg",
+    "video_id": "sample",
+    "timestamp": 11.0,
+    "scene_id": 10,
+    "is_representative": true,
+    "blur_score": 288.41
+  },
+  "4": {
+    "filename": "sample_frame_12.jpg",
+    "video_id": "sample",
+    "timestamp": 12.0,
+    "scene_id": 11,
+    "is_representative": true,
+    "blur_score": 174.13
+  },
+  "5": {
+    "filename": "sample_frame_2.jpg",
+    "video_id": "sample",
+    "timestamp": 2.0,
+    "scene_id": 2,
+    "is_representative": true,
+    "blur_score": 141.7
+  },
+  "6": {
+    "filename": "sample_frame_3.jpg",
+    "video_id": "sample",
+    "timestamp": 3.0,
+    "scene_id": 3,
+    "is_representative": true,
+    "blur_score": 204.18
+  },
+  "7": {
+    "filename": "sample_frame_4.jpg",
+    "video_id": "sample",
+    "timestamp": 4.0,
+    "scene_id": 4,
+    "is_representative": true,
+    "blur_score": 197.52
+  },
+  "8": {
+    "filename": "sample_frame_5.jpg",
+    "video_id": "sample",
+    "timestamp": 5.0,
+    "scene_id": 5,
+    "is_representative": true,
+    "blur_score": 195.17
+  },
+  "9": {
+    "filename": "sample_frame_6.jpg",
+    "video_id": "sample",
+    "timestamp": 6.0,
+    "scene_id": 6,
+    "is_representative": true,
+    "blur_score": 177.03
+  },
+  "10": {
+    "filename": "sample_frame_7.jpg",
+    "video_id": "sample",
+    "timestamp": 7.0,
+    "scene_id": 6,
+    "is_representative": false,
+    "blur_score": 166.39
+  },
+  "11": {
+    "filename": "sample_frame_8.jpg",
+    "video_id": "sample",
+    "timestamp": 8.0,
+    "scene_id": 7,
+    "is_representative": true,
+    "blur_score": 146.47
+  },
+  "12": {
+    "filename": "sample_frame_9.jpg",
+    "video_id": "sample",
+    "timestamp": 9.0,
+    "scene_id": 8,
+    "is_representative": true,
+    "blur_score": 229.96
+  },
+  "13": {
+    "filename": "video0_frame_0.jpg",
+    "video_id": "video0",
+    "timestamp": 0.0,
+    "scene_id": 12,
+    "is_representative": true,
+    "blur_score": 235.2
+  },
+  "14": {
+    "filename": "video0_frame_1.jpg",
+    "video_id": "video0",
+    "timestamp": 1.0,
+    "scene_id": 13,
+    "is_representative": true,
+    "blur_score": 196.22
+  },
+  "15": {
+    "filename": "video0_frame_10.jpg",
+    "video_id": "video0",
+    "timestamp": 10.0,
+    "scene_id": 21,
+    "is_representative": true,
+    "blur_score": 234.37
+  },
+  "16": {
+    "filename": "video0_frame_11.jpg",
+    "video_id": "video0",
+    "timestamp": 11.0,
+    "scene_id": 22,
+    "is_representative": true,
+    "blur_score": 288.41
+  },
+  "17": {
+    "filename": "video0_frame_12.jpg",
+    "video_id": "video0",
+    "timestamp": 12.0,
+    "scene_id": 23,
+    "is_representative": true,
+    "blur_score": 174.13
+  },
+  "18": {
+    "filename": "video0_frame_2.jpg",
+    "video_id": "video0",
+    "timestamp": 2.0,
+    "scene_id": 14,
+    "is_representative": true,
+    "blur_score": 141.7
+  },
+  "19": {
+    "filename": "video0_frame_3.jpg",
+    "video_id": "video0",
+    "timestamp": 3.0,
+    "scene_id": 15,
+    "is_representative": true,
+    "blur_score": 204.18
+  },
+  "20": {
+    "filename": "video0_frame_4.jpg",
+    "video_id": "video0",
+    "timestamp": 4.0,
+    "scene_id": 16,
+    "is_representative": true,
+    "blur_score": 197.52
+  },
+  "21": {
+    "filename": "video0_frame_5.jpg",
+    "video_id": "video0",
+    "timestamp": 5.0,
+    "scene_id": 17,
+    "is_representative": true,
+    "blur_score": 195.17
+  },
+  "22": {
+    "filename": "video0_frame_6.jpg",
+    "video_id": "video0",
+    "timestamp": 6.0,
+    "scene_id": 18,
+    "is_representative": true,
+    "blur_score": 177.03
+  },
+  "23": {
+    "filename": "video0_frame_7.jpg",
+    "video_id": "video0",
+    "timestamp": 7.0,
+    "scene_id": 18,
+    "is_representative": false,
+    "blur_score": 166.39
+  },
+  "24": {
+    "filename": "video0_frame_8.jpg",
+    "video_id": "video0",
+    "timestamp": 8.0,
+    "scene_id": 19,
+    "is_representative": true,
+    "blur_score": 146.47
+  },
+  "25": {
+    "filename": "video0_frame_9.jpg",
+    "video_id": "video0",
+    "timestamp": 9.0,
+    "scene_id": 20,
+    "is_representative": true,
+    "blur_score": 229.96
+  },
+  "26": {
+    "filename": "video7014_frame_0.jpg",
+    "video_id": "video7014",
+    "timestamp": 0.0,
+    "scene_id": 24,
+    "is_representative": true,
+    "blur_score": 440.1
+  },
+  "27": {
+    "filename": "video7014_frame_1.jpg",
+    "video_id": "video7014",
+    "timestamp": 1.0,
+    "scene_id": 25,
+    "is_representative": true,
+    "blur_score": 399.89
+  },
+  "28": {
+    "filename": "video7014_frame_10.jpg",
+    "video_id": "video7014",
+    "timestamp": 10.0,
+    "scene_id": 34,
+    "is_representative": true,
+    "blur_score": 365.27
+  },
+  "29": {
+    "filename": "video7014_frame_11.jpg",
+    "video_id": "video7014",
+    "timestamp": 11.0,
+    "scene_id": 35,
+    "is_representative": true,
+    "blur_score": 445.73
+  },
+  "30": {
+    "filename": "video7014_frame_2.jpg",
+    "video_id": "video7014",
+    "timestamp": 2.0,
+    "scene_id": 26,
+    "is_representative": true,
+    "blur_score": 378.39
+  },
+  "31": {
+    "filename": "video7014_frame_3.jpg",
+    "video_id": "video7014",
+    "timestamp": 3.0,
+    "scene_id": 27,
+    "is_representative": true,
+    "blur_score": 261.29
+  },
+  "32": {
+    "filename": "video7014_frame_4.jpg",
+    "video_id": "video7014",
+    "timestamp": 4.0,
+    "scene_id": 28,
+    "is_representative": true,
+    "blur_score": 2065.8
+  },
+  "33": {
+    "filename": "video7014_frame_5.jpg",
+    "video_id": "video7014",
+    "timestamp": 5.0,
+    "scene_id": 29,
+    "is_representative": true,
+    "blur_score": 163.2
+  },
+  "34": {
+    "filename": "video7014_frame_6.jpg",
+    "video_id": "video7014",
+    "timestamp": 6.0,
+    "scene_id": 30,
+    "is_representative": true,
+    "blur_score": 637.51
+  },
+  "35": {
+    "filename": "video7014_frame_7.jpg",
+    "video_id": "video7014",
+    "timestamp": 7.0,
+    "scene_id": 31,
+    "is_representative": true,
+    "blur_score": 319.98
+  },
+  "36": {
+    "filename": "video7014_frame_8.jpg",
+    "video_id": "video7014",
+    "timestamp": 8.0,
+    "scene_id": 32,
+    "is_representative": true,
+    "blur_score": 379.03
+  },
+  "37": {
+    "filename": "video7014_frame_9.jpg",
+    "video_id": "video7014",
+    "timestamp": 9.0,
+    "scene_id": 33,
+    "is_representative": true,
+    "blur_score": 418.45
+  },
+  "38": {
+    "filename": "video7020_frame_0.jpg",
+    "video_id": "video7020",
+    "timestamp": 0.0,
+    "scene_id": 36,
+    "is_representative": true,
+    "blur_score": 595.91
+  },
+  "39": {
+    "filename": "video7020_frame_1.jpg",
+    "video_id": "video7020",
+    "timestamp": 1.0,
+    "scene_id": 37,
+    "is_representative": true,
+    "blur_score": 473.69
+  },
+  "40": {
+    "filename": "video7020_frame_10.jpg",
+    "video_id": "video7020",
+    "timestamp": 10.0,
+    "scene_id": 46,
+    "is_representative": true,
+    "blur_score": 550.22
+  },
+  "41": {
+    "filename": "video7020_frame_2.jpg",
+    "video_id": "video7020",
+    "timestamp": 2.0,
+    "scene_id": 38,
+    "is_representative": true,
+    "blur_score": 498.18
+  },
+  "42": {
+    "filename": "video7020_frame_3.jpg",
+    "video_id": "video7020",
+    "timestamp": 3.0,
+    "scene_id": 39,
+    "is_representative": true,
+    "blur_score": 429.57
+  },
+  "43": {
+    "filename": "video7020_frame_4.jpg",
+    "video_id": "video7020",
+    "timestamp": 4.0,
+    "scene_id": 40,
+    "is_representative": true,
+    "blur_score": 431.86
+  },
+  "44": {
+    "filename": "video7020_frame_5.jpg",
+    "video_id": "video7020",
+    "timestamp": 5.0,
+    "scene_id": 41,
+    "is_representative": true,
+    "blur_score": 416.73
+  },
+  "45": {
+    "filename": "video7020_frame_6.jpg",
+    "video_id": "video7020",
+    "timestamp": 6.0,
+    "scene_id": 42,
+    "is_representative": true,
+    "blur_score": 130.92
+  },
+  "46": {
+    "filename": "video7020_frame_7.jpg",
+    "video_id": "video7020",
+    "timestamp": 7.0,
+    "scene_id": 43,
+    "is_representative": true,
+    "blur_score": 265.02
+  },
+  "47": {
+    "filename": "video7020_frame_8.jpg",
+    "video_id": "video7020",
+    "timestamp": 8.0,
+    "scene_id": 44,
+    "is_representative": true,
+    "blur_score": 443.01
+  },
+  "48": {
+    "filename": "video7020_frame_9.jpg",
+    "video_id": "video7020",
+    "timestamp": 9.0,
+    "scene_id": 45,
+    "is_representative": true,
+    "blur_score": 308.28
+  },
+  "49": {
+    "filename": "video7109_frame_0.jpg",
+    "video_id": "video7109",
+    "timestamp": 0.0,
+    "scene_id": 47,
+    "is_representative": true,
+    "blur_score": 558.07
+  },
+  "50": {
+    "filename": "video7109_frame_1.jpg",
+    "video_id": "video7109",
+    "timestamp": 1.0,
+    "scene_id": 48,
+    "is_representative": true,
+    "blur_score": 441.23
+  },
+  "51": {
+    "filename": "video7109_frame_2.jpg",
+    "video_id": "video7109",
+    "timestamp": 2.0,
+    "scene_id": 49,
+    "is_representative": true,
+    "blur_score": 615.27
+  },
+  "52": {
+    "filename": "video7109_frame_3.jpg",
+    "video_id": "video7109",
+    "timestamp": 3.0,
+    "scene_id": 50,
+    "is_representative": true,
+    "blur_score": 764.56
+  },
+  "53": {
+    "filename": "video7109_frame_4.jpg",
+    "video_id": "video7109",
+    "timestamp": 4.0,
+    "scene_id": 51,
+    "is_representative": true,
+    "blur_score": 329.26
+  },
+  "54": {
+    "filename": "video7109_frame_5.jpg",
+    "video_id": "video7109",
+    "timestamp": 5.0,
+    "scene_id": 52,
+    "is_representative": true,
+    "blur_score": 513.17
+  },
+  "55": {
+    "filename": "video7109_frame_6.jpg",
+    "video_id": "video7109",
+    "timestamp": 6.0,
+    "scene_id": 53,
+    "is_representative": false,
+    "blur_score": 603.69
+  },
+  "56": {
+    "filename": "video7109_frame_7.jpg",
+    "video_id": "video7109",
+    "timestamp": 7.0,
+    "scene_id": 53,
+    "is_representative": true,
+    "blur_score": 623.57
+  },
+  "57": {
+    "filename": "video7109_frame_8.jpg",
+    "video_id": "video7109",
+    "timestamp": 8.0,
+    "scene_id": 54,
+    "is_representative": true,
+    "blur_score": 644.6
+  },
+  "58": {
+    "filename": "video7109_frame_9.jpg",
+    "video_id": "video7109",
+    "timestamp": 9.0,
+    "scene_id": 55,
+    "is_representative": true,
+    "blur_score": 491.26
+  },
+  "59": {
+    "filename": "video7123_frame_0.jpg",
+    "video_id": "video7123",
+    "timestamp": 0.0,
+    "scene_id": 56,
+    "is_representative": true,
+    "blur_score": 359.62
+  },
+  "60": {
+    "filename": "video7123_frame_10.jpg",
+    "video_id": "video7123",
+    "timestamp": 10.0,
+    "scene_id": 62,
+    "is_representative": true,
+    "blur_score": 263.23
+  },
+  "61": {
+    "filename": "video7123_frame_11.jpg",
+    "video_id": "video7123",
+    "timestamp": 11.0,
+    "scene_id": 63,
+    "is_representative": true,
+    "blur_score": 201.32
+  },
+  "62": {
+    "filename": "video7123_frame_12.jpg",
+    "video_id": "video7123",
+    "timestamp": 12.0,
+    "scene_id": 64,
+    "is_representative": true,
+    "blur_score": 220.92
+  },
+  "63": {
+    "filename": "video7123_frame_5.jpg",
+    "video_id": "video7123",
+    "timestamp": 5.0,
+    "scene_id": 57,
+    "is_representative": true,
+    "blur_score": 628.64
+  },
+  "64": {
+    "filename": "video7123_frame_6.jpg",
+    "video_id": "video7123",
+    "timestamp": 6.0,
+    "scene_id": 58,
+    "is_representative": true,
+    "blur_score": 380.92
+  },
+  "65": {
+    "filename": "video7123_frame_7.jpg",
+    "video_id": "video7123",
+    "timestamp": 7.0,
+    "scene_id": 59,
+    "is_representative": true,
+    "blur_score": 445.86
+  },
+  "66": {
+    "filename": "video7123_frame_8.jpg",
+    "video_id": "video7123",
+    "timestamp": 8.0,
+    "scene_id": 60,
+    "is_representative": true,
+    "blur_score": 349.25
+  },
+  "67": {
+    "filename": "video7123_frame_9.jpg",
+    "video_id": "video7123",
+    "timestamp": 9.0,
+    "scene_id": 61,
+    "is_representative": true,
+    "blur_score": 326.1
+  }
+}
