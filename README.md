@@ -221,10 +221,7 @@ venv\Scripts\activate
 # 2. Trích keyframe (~5-15 phút/video tùy độ dài)
 python -m src.indexing.ingest --source raw
 
-# 3. LỌC frame mờ/tối & tiền xử lý (Tùy chọn)
-python -m src.indexing.preprocess
-
-# 4. Nén keyframes để upload lên Colab
+# 3. Nén keyframes để upload lên Colab
 python -c "import shutil; shutil.make_archive('keyframes', 'zip', 'data/processed', 'keyframes')"
 ```
 
