@@ -1,0 +1,463 @@
+"""
+detect_objects.py — Object Detection bang Faster R-CNN (torchvision)
+=====================================================================
+Chay Faster R-CNN tren tung keyframe de tao file JSON object detection.
+Output tuong thich voi load_btc_data.load_objects_for_video().
+
+BTC dung: Faster R-CNN pretrained tren OpenImages V4 (600 classes)
+Minh dung: Faster R-CNN pretrained tren COCO (80 classes) - don gian hon,
+           du dung cho rerank_by_objects() trong thi dau.
+
+Cau truc output:
+  data/processed/objects/<video_id>/0000.json
+  data/processed/objects/<video_id>/0001.json
+  ...
+
+Moi file JSON:
+  [
+    {"class": "person",  "score": 0.98, "box": [x1,y1,x2,y2]},
+    {"class": "bicycle", "score": 0.87, "box": [x1,y1,x2,y2]}
+  ]
+
+Chay:
+  # Toan bo video da trich keyframe:
+  python -m src.indexing.detect_objects
+
+  # 1 video cu the:
+  python -m src.indexing.detect_objects --video-id L21_V001
+
+  # Chi dinh nguon keyframe:
+  python -m src.indexing.detect_objects --keyframe-dir data/btc/Keyframes
+"""
+
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+import json
+import argparse
+import torch
+import torchvision
+from pathlib import Path
+from PIL import Image
+from tqdm import tqdm
+
+# ============================================================
+# COCO CLASS NAMES (80 classes) — dung cho model mac dinh
+# ============================================================
+COCO_CLASSES = [
+    '__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
+    'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+    'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
+    'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
+    'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard',
+    'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard',
+    'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork',
+    'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair',
+    'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv',
+    'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+    'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+    'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+]
+
+# Grounding DINO: danh sach class cho cac video surveillance/sousveillance
+# Them/bot class o day de tuy chinh cho tung loai video AIC 2026
+GROUNDING_DINO_CLASSES = [
+    # Nguoi
+    "person", "man", "woman", "child", "crowd",
+    # Phuong tien
+    "car", "motorcycle", "bicycle", "bus", "truck", "van", "taxi",
+    "scooter", "ambulance", "police car",
+    # Duong pho
+    "traffic light", "stop sign", "road sign", "crosswalk", "sidewalk",
+    # Do vat cam tay
+    "phone", "bag", "backpack", "umbrella", "helmet", "hat",
+    # Noi that / cong trinh
+    "building", "door", "window", "chair", "table", "bench", "stairs",
+    # Dong vat
+    "dog", "cat", "bird",
+    # Hanh dong / vat the khac
+    "laptop", "bottle", "cup", "fire", "smoke", "tree", "fence",
+]
+
+
+# ============================================================
+# DUONG DAN
+# ============================================================
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_DIR     = PROJECT_ROOT / "data"
+PROCESSED    = DATA_DIR / "processed"
+
+# Nguon keyframe mac dinh: output cua ingest.py
+KF_DIR_SELF = PROCESSED / "keyframes"         # data/processed/keyframes/<video_id>/
+KF_DIR_BTC  = DATA_DIR  / "btc" / "Keyframes" # data/btc/Keyframes/<video_id>/
+
+# Output objects
+OBJ_OUTPUT  = PROCESSED / "objects"           # data/processed/objects/<video_id>/
+
+
+# ============================================================
+# LOAD MODEL — FACTORY (chon theo --model)
+# ============================================================
+
+def load_model(model_name: str = "coco", device: str = None):
+    """
+    Factory function: tra ve (model, device, model_name).
+
+    model_name:
+      'coco'          : Faster R-CNN torchvision COCO 80 classes  [mac dinh, khong can cai them]
+      'openimages'    : Faster R-CNN TF Hub OpenImages V4 600 classes [giong het BTC, can tensorflow]
+      'grounding-dino': Grounding DINO zero-shot [linh hoat nhat, can pip install groundingdino]
+    """
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if model_name == "openimages":
+        return _load_openimages(device)
+    elif model_name == "grounding-dino":
+        return _load_grounding_dino(device)
+    else:
+        return _load_coco(device)
+
+
+def _load_coco(device: str):
+    """Faster R-CNN torchvision — COCO 80 classes."""
+    print(f"[MODEL] Faster R-CNN COCO (80 classes) on {device.upper()}")
+    weights = torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT
+    model   = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=weights)
+    model.to(device)
+    model.eval()
+    print("[MODEL] OK")
+    return model, device, "coco"
+
+
+def _load_openimages(device: str):
+    """
+    Faster R-CNN TF Hub — OpenImages V4 (600 classes) — GIONG HET BTC.
+    Can: pip install tensorflow tensorflow-hub
+    """
+    try:
+        import tensorflow as tf
+        import tensorflow_hub as hub
+    except ImportError:
+        raise ImportError(
+            "Can cai tensorflow va tensorflow-hub:\n"
+            "  pip install tensorflow tensorflow-hub"
+        )
+
+    print(f"[MODEL] Loading Faster R-CNN OpenImages V4 (600 classes) via TF Hub...")
+    # Model URL chinh thuc tu TF Hub (giong BTC su dung)
+    MODULE_HANDLE = "https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1"
+    detector = hub.load(MODULE_HANDLE)
+    print("[MODEL] OK — OpenImages V4 600 classes")
+    return detector, device, "openimages"
+
+
+def _load_grounding_dino(device: str):
+    """
+    Grounding DINO — zero-shot object detection, khong gioi han class.
+    Can: pip install groundingdino-py
+    """
+    try:
+        from groundingdino.util.inference import load_model as gd_load
+        from groundingdino.util.inference import predict
+    except ImportError:
+        raise ImportError(
+            "Can cai groundingdino:\n"
+            "  pip install groundingdino-py"
+        )
+
+    print(f"[MODEL] Loading Grounding DINO (zero-shot) on {device.upper()}...")
+    # Tai config va weights tu HuggingFace
+    import urllib.request, tempfile
+    cfg_url = "https://raw.githubusercontent.com/IDEA-Research/GroundingDINO/main/groundingdino/config/GroundingDINO_SwinT_OGC.py"
+    wt_url  = "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth"
+
+    tmp = tempfile.mkdtemp()
+    cfg_path = f"{tmp}/config.py"
+    wt_path  = f"{tmp}/weights.pth"
+    urllib.request.urlretrieve(cfg_url, cfg_path)
+    urllib.request.urlretrieve(wt_url,  wt_path)
+
+    model = gd_load(cfg_path, wt_path)
+    model = model.to(device)
+    print("[MODEL] OK — Grounding DINO zero-shot")
+    return model, device, "grounding-dino"
+
+
+
+# ============================================================
+# DETECT 1 FRAME (ho tro ca 3 backend)
+# ============================================================
+
+def detect_frame(image_path: Path, model, device: str,
+                 model_name: str = "coco",
+                 score_threshold: float = 0.3) -> list:
+    """
+    Chay object detection tren 1 anh, tu dong chon backend dua theo model_name.
+    Tra ve list: [{"class": "person", "score": 0.98, "box": [x1,y1,x2,y2]}, ...]
+    """
+    if model_name == "openimages":
+        return _detect_openimages(image_path, model, score_threshold)
+    elif model_name == "grounding-dino":
+        return _detect_grounding_dino(image_path, model, device, score_threshold)
+    else:
+        return _detect_coco(image_path, model, device, score_threshold)
+
+
+def _detect_coco(image_path, model, device, score_threshold):
+    """COCO 80 classes — dung torchvision."""
+    img = Image.open(image_path).convert("RGB")
+    import torchvision.transforms.functional as F
+    tensor = F.to_tensor(img).to(device)
+    with torch.no_grad():
+        outputs = model([tensor])[0]
+    results = []
+    for label, score, box in zip(
+        outputs["labels"].cpu().tolist(),
+        outputs["scores"].cpu().tolist(),
+        outputs["boxes"].cpu().tolist()
+    ):
+        if score < score_threshold:
+            continue
+        class_name = COCO_CLASSES[label] if label < len(COCO_CLASSES) else str(label)
+        results.append({
+            "class": class_name,
+            "score": round(score, 4),
+            "box":   [round(v, 1) for v in box],
+        })
+    return results
+
+
+def _detect_openimages(image_path, detector, score_threshold):
+    """
+    OpenImages V4 600 classes — dung TF Hub.
+    Output giong het format BTC.
+    """
+    import tensorflow as tf
+    import numpy as np
+    img = Image.open(image_path).convert("RGB")
+    img_tensor = tf.constant(np.array(img))[tf.newaxis, ...]
+    result = detector(img_tensor)
+    result = {k: v.numpy() for k, v in result.items()}
+
+    results = []
+    n = len(result["detection_scores"][0])
+    for i in range(n):
+        score = float(result["detection_scores"][0][i])
+        if score < score_threshold:
+            break  # da sorted giam dan
+        class_name = result["detection_class_entities"][0][i].decode("utf-8")
+        box = result["detection_boxes"][0][i].tolist()   # [ymin, xmin, ymax, xmax]
+        results.append({
+            "class": class_name,
+            "score": round(score, 4),
+            "box":   [round(v, 4) for v in box],
+        })
+    return results
+
+
+def _detect_grounding_dino(image_path, model, device, score_threshold):
+    """
+    Grounding DINO zero-shot — dung GROUNDING_DINO_CLASSES lam prompt.
+    """
+    from groundingdino.util.inference import predict
+    import torchvision.transforms as T
+
+    img = Image.open(image_path).convert("RGB")
+    transform = T.Compose([
+        T.Resize([800], max_size=1333),
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+    img_tensor = transform(img).to(device)
+    prompt = " . ".join(GROUNDING_DINO_CLASSES) + " ."
+
+    boxes, logits, phrases = predict(
+        model=model, image=img_tensor,
+        caption=prompt,
+        box_threshold=score_threshold,
+        text_threshold=score_threshold,
+    )
+    results = []
+    for phrase, score in zip(phrases, logits.tolist()):
+        results.append({
+            "class": phrase,
+            "score": round(score, 4),
+        })
+    return results
+
+
+# ============================================================
+# DETECT 1 VIDEO
+# ============================================================
+
+def detect_video(video_id: str, model, device: str,
+                 model_name: str = "coco",
+                 keyframe_dir: Path = KF_DIR_SELF,
+                 output_dir: Path = OBJ_OUTPUT,
+                 score_threshold: float = 0.3,
+                 skip_existing: bool = True) -> int:
+    """
+    Chay object detection tren tat ca keyframe cua 1 video.
+    Luu JSON vao output_dir/<video_id>/<frame_name>.json.
+    Returns: So frame da xu ly
+    """
+    kf_video_dir = keyframe_dir / video_id
+    if not kf_video_dir.exists():
+        print(f"  [WARN] Khong tim thay keyframe cho {video_id}: {kf_video_dir}")
+        return 0
+
+    jpg_files = sorted(kf_video_dir.glob("*.jpg"))
+    if not jpg_files:
+        print(f"  [WARN] Khong co file .jpg trong {kf_video_dir}")
+        return 0
+
+    out_video_dir = output_dir / video_id
+    out_video_dir.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for jpg_path in tqdm(jpg_files, desc=f"  {video_id}", leave=False):
+        out_json = out_video_dir / f"{jpg_path.stem}.json"
+
+        if skip_existing and out_json.exists():
+            count += 1
+            continue
+
+        try:
+            detections = detect_frame(jpg_path, model, device,
+                                      model_name=model_name,
+                                      score_threshold=score_threshold)
+            with open(out_json, "w", encoding="utf-8") as f:
+                json.dump(detections, f, ensure_ascii=False)
+            count += 1
+        except Exception as e:
+            print(f"  [WARN] {jpg_path.name}: {e}")
+
+    return count
+
+
+# ============================================================
+# PIPELINE CHINH
+# ============================================================
+
+def run_detect(keyframe_dir: Path = KF_DIR_SELF,
+               output_dir: Path = OBJ_OUTPUT,
+               video_id: str = None,
+               model_name: str = "coco",
+               score_threshold: float = 0.3,
+               skip_existing: bool = True):
+    """Chay object detection toan bo thu muc keyframe."""
+    model, device, model_name = load_model(model_name)
+
+    if video_id:
+        video_dirs = [keyframe_dir / video_id]
+    else:
+        video_dirs = sorted([d for d in keyframe_dir.iterdir() if d.is_dir()])
+
+    if not video_dirs:
+        print(f"Khong tim thay thu muc video trong: {keyframe_dir}")
+        return
+
+    model_labels = {
+        "coco":           "COCO 80 classes (torchvision)",
+        "openimages":     "OpenImages V4 600 classes (TF Hub) — GIONG HET BTC",
+        "grounding-dino": f"Grounding DINO zero-shot ({len(GROUNDING_DINO_CLASSES)} custom classes)",
+    }
+
+    print(f"\n{'='*60}")
+    print(f"  OBJECT DETECTION — {len(video_dirs)} videos")
+    print(f"  Model  : {model_labels.get(model_name, model_name)}")
+    print(f"  Device : {device.upper()}")
+    print(f"  Nguon  : {keyframe_dir}")
+    print(f"  Output : {output_dir}")
+    print(f"{'='*60}\n")
+
+    total_frames = 0
+    for vdir in video_dirs:
+        vid = vdir.name
+        print(f"[{vid}]")
+        n = detect_video(
+            video_id=vid,
+            model=model,
+            device=device,
+            model_name=model_name,
+            keyframe_dir=keyframe_dir,
+            output_dir=output_dir,
+            score_threshold=score_threshold,
+            skip_existing=skip_existing,
+        )
+        print(f"  Done: {n} frames")
+        total_frames += n
+
+    print(f"\n{'='*60}")
+    print(f"DETECT DONE! {total_frames} frames")
+    print(f"Output: {output_dir}")
+    print(f"{'='*60}")
+    print()
+    print("BUOC TIEP THEO:")
+    print("  python -m src.indexing.load_btc_data --mode build")
+    print("  -> Objects se duoc nap tu dong vao frame_index_btc.json")
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Object Detection tren Keyframes",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "--model", choices=["coco", "openimages", "grounding-dino"], default="coco",
+        help=(
+            "Chon model:\n"
+            "  coco          : Faster R-CNN COCO 80 classes [mac dinh, khong can cai them]\n"
+            "  openimages    : Faster R-CNN OpenImages V4 600 classes [giong het BTC]\n"
+            "                  -> can: pip install tensorflow tensorflow-hub\n"
+            "  grounding-dino: Zero-shot, dung GROUNDING_DINO_CLASSES [linh hoat nhat]\n"
+            "                  -> can: pip install groundingdino-py"
+        )
+    )
+    parser.add_argument(
+        "--source", choices=["self", "btc"], default="self",
+        help=(
+            "Nguon keyframe:\n"
+            "  self: data/processed/keyframes/ (output ingest.py) [default]\n"
+            "  btc : data/btc/Keyframes/ (BTC cung cap)"
+        )
+    )
+    parser.add_argument(
+        "--keyframe-dir", type=str, default=None,
+        help="Tuy chinh thu muc keyframe (ghi de --source)"
+    )
+    parser.add_argument(
+        "--video-id", type=str, default=None,
+        help="Chi xu ly 1 video cu the (vi du: L21_V001). Mac dinh: tat ca"
+    )
+    parser.add_argument(
+        "--score-threshold", type=float, default=0.3,
+        help="Nguong confidence toi thieu (default: 0.3)"
+    )
+    parser.add_argument(
+        "--no-skip", action="store_true",
+        help="Chay lai du da co file JSON (mac dinh: bo qua file da xu ly)"
+    )
+    args = parser.parse_args()
+
+    if args.keyframe_dir:
+        kf_dir = Path(args.keyframe_dir)
+    elif args.source == "btc":
+        kf_dir = KF_DIR_BTC
+    else:
+        kf_dir = KF_DIR_SELF
+
+    run_detect(
+        keyframe_dir=kf_dir,
+        output_dir=OBJ_OUTPUT,
+        video_id=args.video_id,
+        model_name=args.model,
+        score_threshold=args.score_threshold,
+        skip_existing=not args.no_skip,
+    )

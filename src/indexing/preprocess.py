@@ -247,7 +247,14 @@ _DATASET_REGISTRY: dict[str, dict] = {
         "frame_map":    DATA_DIR / "frame_index_clean.json",
         "features":     DATA_DIR / "clip_features_clean.npy",
     },
-    # "real": { ... }   ← thêm sau khi có data thật
+    # Data chinh thuc tu BTC AIC 2026 (sau khi chay load_btc_data.py --mode build)
+    "btc": {
+        "keyframe_dir": DATA_DIR.parent / "btc" / "Keyframes",
+        "metadata":     DATA_DIR / "frame_index_btc.json",
+        "faiss_index":  DATA_DIR / "index_btc.faiss",
+        "frame_map":    DATA_DIR / "frame_index_btc.json",
+        "features":     DATA_DIR / "clip_features_btc.npy",
+    },
 }
 
 

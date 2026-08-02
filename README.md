@@ -171,3 +171,260 @@ venv\Scripts\activate.bat
 > ANTHROPIC_API_KEY=...
 > GOOGLE_API_KEY=...
 > ```
+## 7. Pipeline Xử Lý Data — Kịch Bản Nhiều Máy (Bản đầy đủ)
+
+> BTC gửi nhiều video → chia đều cho từng máy → mỗi máy xử lý phần của mình → gộp lại build FAISS
+
+
+---
+
+### Tổng quan luồng (đã bổ sung)
+
+```
+BTC gửi N video (.mp4)
+    │
+    ├──[Người A] 50 video → Máy A
+    ├──[Người B] 50 video → Máy B  ← Mỗi máy chạy các bước giống nhau (xem bên dưới)
+    ├──[Người C] 50 video → Máy C
+    └──[Người D] 50 video → Máy D
+                                   │
+                    ┌──────────────┘
+                    ▼
+        [Người A] Gộp .npy từ tất cả máy
+            └── python run.py --stage build-self
+                    → index_self.faiss   ← SẴN SÀNG THI
+                    │
+                    ▼
+            python run.py --stage verify
+                    → Đối chiếu với data BTC cho sẵn (nếu có)
+                    → Xác nhận pipeline đáng tin trước khi dùng khi thi thật
+```
+
+---
+
+### Bước 1 — Chia video (Người A làm 1 lần)
+
+
+---
+
+### Bước 2 — Mỗi máy xử lý phần của mình (LOCAL) 
+
+> Tất cả máy chạy **cùng các lệnh sau**, theo đúng thứ tự — không được đảo lộn.
+
+```powershell
+# 0. Kích hoạt môi trường ảo (mỗi phiên làm việc)
+venv\Scripts\activate
+
+# 1. Bỏ video được giao vào đây:
+#    data\raw_videos\
+
+# 2. Trích keyframe (~5-15 phút/video tùy độ dài)
+python -m src.indexing.ingest --source raw
+
+# 3. LỌC frame mờ/tối & tiền xử lý (Tùy chọn)
+python -m src.indexing.preprocess
+
+# 4. Nén keyframes để upload lên Colab
+python -c "import shutil; shutil.make_archive('keyframes', 'zip', 'data/processed', 'keyframes')"
+```
+
+Sau đó **upload `keyframes.zip` lên Google Drive** → sang Bước 3 (Colab) để chạy Encode CLIP + Object Detection.
+
+---
+
+### Bước 3 — Encode CLIP trên Google Colab (GPU) — Xem chi tiết tại [Section 8](#8-google-colab---5-cell-encode-clip) bên dưới.
+
+---
+
+### Bước 4 — Sau khi download kết quả từ Colab về máy
+
+Không đổi:
+Giải nén file `.zip` (chứa cả `clip-features` và `objects` từ Colab trả về):
+```bash
+python -c "import shutil; shutil.unpack_archive('colab_results.zip', 'data/processed')"
+```
+
+---
+
+### Bước 5 — Người A gộp tất cả, build FAISS
+
+```powershell
+# Nhận 4 thứ sau từ mỗi máy (qua Drive/USB):
+#   data\processed\clip-features\<video_id>.npy   ← CLIP features
+#   data\processed\map-keyframes\<video_id>.csv   ← frame map (frame_idx thật — BẮT BUỘC dùng đúng cột này)
+#   data\processed\objects\<video_id>\            ← object JSON (từ BTC hoặc tự detect)
+#   data\processed\media-info\<video_id>.json     ← metadata
+
+# Copy tất cả vào cùng 1 máy (Máy A), cấu trúc y hệt nhau.
+python run.py --stage build-self
+
+# Kết quả:
+#   data\processed\index_self.faiss        ← FAISS sẵn sàng thi
+#   data\processed\frame_index_self.json   ← mapping global → {video_id, frame_idx (từ map-keyframes.csv)}
+#   data\processed\clip_features_self.npy  ← features matrix tổng
+```
+
+**Kiểm tra bắt buộc:** mở `frame_index_self.json`, xác nhận field lưu đúng tên **`frame_idx`** (số frame thật lấy từ `map-keyframes/*.csv`), không phải số tự đếm theo thứ tự file `.npy`. Đây là con số BTC dùng để chấm điểm — sai field này thì dù tìm đúng khung hình vẫn bị chấm 0.
+
+---
+
+### 🆕 Bước 6 — Kiểm chứng pipeline trước khi tin dùng
+
+```powershell
+python run.py --stage verify
+```
+
+So sánh vector tự encode (từ `run.py --stage encode`) với vector BTC cho sẵn (`clip-features-32/*.npy`) trên cùng ảnh — in ra cosine similarity trung bình.
+
+- **> 0.95**: pipeline đúng chuẩn, yên tâm dùng khi thi thật (lúc đó BTC chỉ đưa video, không có gì để đối chiếu nữa).
+- **< 0.85**: dừng lại, kiểm tra lại bước `filter`/`ingest` — khả năng cao đang bật letterbox/normalize sai cách trước khi encode.
+
+**Chỉ chạy được nếu có data BTC batch tham khảo để đối chiếu** — không áp dụng được khi xử lý video thi thật (vì lúc đó không có "đáp án mẫu").
+
+---
+
+### Cấu trúc thư mục sau khi hoàn tất (đã cập nhật)
+
+```
+data\processed\
+├── keyframes\<video_id>\0000.jpg ...        ← keyframe thô (trước lọc)
+├── keyframes_clean\<video_id>\...           ← 🆕 sau filter + group-scenes (encode từ đây)
+├── metadata_clean.json                       ← 🆕 có blur_score, is_clean, scene_id, is_representative
+├── map-keyframes\<video_id>.csv              ← frame map (frame_idx thật)
+├── media-info\<video_id>.json                ← fps, duration (auto)
+├── objects\<video_id>\0000.json ...           ← object detection (BTC cho hoặc tự detect)
+├── clip-features\<video_id>.npy               ← CLIP features (từ Colab)
+│
+├── index_self.faiss                          ← FAISS tổng ← SẴN SÀNG THI
+└── frame_index_self.json                     ← mapping (dùng đúng frame_idx)
+```
+
+---
+
+## 8. Google Colab — 5 Cell Encode CLIP
+
+> Chạy sau Bước 2 (đã có `keyframes.zip` — **chứa `keyframes_clean/`, không phải `keyframes/` thô**).
+> Yêu cầu: **Runtime → Change runtime type → T4 GPU**
+
+---
+
+### Cell 1 — Clone code từ GitHub (không đổi)
+
+> Yêu cầu: **Runtime → Change runtime type → T4 GPU**
+
+---
+
+
+
+> **Chuẩn bị token 1 lần duy nhất** (làm trước khi chạy Colab):
+>
+> 1. Vào GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+> 2. Bấm **Generate new token (classic)**
+> 3. Đặt tên `aic2026-colab`, thời hạn **30 ngày**
+> 4. Tick đúng **1 ô**: `repo` (Full control of private repositories)
+> 5. Bấm **Generate token** → **copy ngay** (chỉ hiện 1 lần!)
+> 6. Trong Colab: bấm icon 🔑 **Secrets** (thanh bên trái) → **Add new secret**
+>    - Name: `GITHUB_TOKEN`
+>    - Value: dán token vừa copy
+>    - Bật **Notebook access** → Save
+
+### Cell 1 — Clone code từ GitHub
+
+```python
+# ===== CELL 1: Lấy token từ Colab Secrets + clone repo =====
+from google.colab import userdata
+
+GITHUB_TOKEN = userdata.get('GITHUB_TOKEN')   # lấy từ Colab Secrets (an toàn, không lộ token)
+print(f"Token OK: {len(GITHUB_TOKEN)} ký tự")  # chỉ in độ dài, không in nội dung
+
+REPO   = "NGUYENHUUTINH-uit/AI_Challenge_2026"
+BRANCH = "main"   # ← thay tên nhánh của bạn nếu khác
+
+%cd /content
+!rm -rf AI_Challenge_2026
+!git clone https://{GITHUB_TOKEN}@github.com/{REPO}.git
+%cd AI_Challenge_2026
+!git checkout {BRANCH}
+!ls src/indexing   # kiểm tra code đã clone đúng
+```
+
+---
+
+### Cell 2 — Cài thư viện (🆕 đã bỏ `faiss-gpu`)
+
+```python
+!pip install -q ftfy regex tqdm Pillow numpy pandas
+!pip install -q git+https://github.com/openai/CLIP.git
+
+import torch
+print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else '❌ KHÔNG CÓ GPU'}")
+```
+
+---
+
+### Cell 3 — Mount Drive và giải nén keyframes ( sửa tên thư mục)
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+
+ZIP_PATH = "/content/drive/MyDrive/AIC2026/keyframes.zip"
+
+!unzip -q -o "{ZIP_PATH}" -d /content/AI_Challenge_2026/data/processed/
+
+import os
+kf_dir    = "/content/AI_Challenge_2026/data/processed/keyframes"
+n_videos  = len([d for d in os.listdir(kf_dir) if os.path.isdir(f"{kf_dir}/{d}")])
+n_frames  = sum(len(os.listdir(f"{kf_dir}/{d}")) for d in os.listdir(kf_dir)
+                if os.path.isdir(f"{kf_dir}/{d}"))
+print(f"✅ {n_videos} video | {n_frames} frames")
+```
+
+---
+
+### Cell 4 — Encode CLIP và Object Detection (Trên GPU cực nhanh)
+
+```python
+import time
+start = time.time()
+
+# 1. Encode CLIP vector
+print("Đang chạy Encode CLIP...")
+!python run.py --stage encode --batch-size 32
+
+# 2. Object detection (Faster R-CNN)
+print("\nĐang chạy Object Detection...")
+!python run.py --stage detect --obj-model coco
+
+elapsed = time.time() - start
+print(f"Tổng thời gian: {elapsed/60:.1f} phút")
+```
+
+---
+
+### Cell 5 — Nén kết quả và lưu về Drive
+
+```python
+import shutil
+import os
+
+# Gom cả clip-features và objects vào một thư mục chung để nén
+os.makedirs("/content/results", exist_ok=True)
+!cp -r /content/AI_Challenge_2026/data/processed/clip-features /content/results/
+!cp -r /content/AI_Challenge_2026/data/processed/objects /content/results/
+
+# Nén thư mục kết quả
+shutil.make_archive(
+    "/content/colab_results",   # tên file zip
+    "zip",
+    "/content/results"
+)
+
+# Lưu về Drive
+shutil.copy(
+    "/content/colab_results.zip",
+    "/content/drive/MyDrive/AIC2026/colab_results.zip"
+)
+print("✅ Đã lưu colab_results.zip lên Drive!")
+print("   → Tải về máy Local rồi giải nén vào data/processed/, sau đó chạy: python run.py --stage build-self")
+```

@@ -29,8 +29,11 @@ SRC_DIR      = Path(__file__).resolve().parent   # src/indexing/
 PROJECT_ROOT = SRC_DIR.parent.parent             # goc du an
 DATA_DIR     = PROJECT_ROOT / "data" / "processed"
 
-# --- Dataset mac dinh: dung output sach tu A5 ---
-KEYFRAME_DIR  = DATA_DIR / "keyframes_clean"
+# --- Cac nguon dataset ---
+# 'clean' : output A5 preprocess (flat dir, co filter)
+# 'sample': output A2 ingest cu (flat dir, chua filter)
+# 'self'  : output ingest.py moi (subfolder per video, format BTC)
+KEYFRAME_DIR  = DATA_DIR / "keyframes_clean"  # default: clean
 METADATA_PATH = DATA_DIR / "metadata_clean.json"
 OUTPUT_DIR    = DATA_DIR
 
@@ -163,12 +166,11 @@ def _get_frame_paths(keyframe_dir: Path, metadata_path: Path,
                      rep_only: bool = False) -> list:
     """
     Lay danh sach frame can index.
-    - rep_only=False : toan bo frame trong keyframe_dir (cu hanh vi A3)
-    - rep_only=True  : chi frame is_representative=True tu metadata A5
-                       => giam kich thuoc FAISS dang ke voi surveillance data
+    Ho tro 2 cau truc:
+      - Flat  : keyframes/*.jpg (output A5 cu)
+      - Subfolder: keyframes/<video_id>/*.jpg (output ingest.py moi, format BTC)
     """
     if rep_only:
-        # Dung helper cua group_scenes.py
         try:
             from src.indexing.group_scenes import get_representative_paths
             paths = get_representative_paths(
@@ -182,8 +184,18 @@ def _get_frame_paths(keyframe_dir: Path, metadata_path: Path,
         except Exception as e:
             print(f"  [WARN] Khong the load group_scenes: {e}. Fallback: toan bo frame.")
 
-    # Mac dinh: toan bo jpg trong keyframe_dir
-    return sorted(keyframe_dir.glob("*.jpg"), key=_sort_key)
+    # Flat format: keyframes/*.jpg
+    flat_files = list(keyframe_dir.glob("*.jpg"))
+    if flat_files:
+        return sorted(flat_files, key=_sort_key)
+
+    # Subfolder format: keyframes/<video_id>/*.jpg (BTC / ingest.py moi)
+    sub_files = list(keyframe_dir.glob("*/*.jpg"))
+    if sub_files:
+        print(f"  [INFO] Dung subfolder format ({keyframe_dir.name}/<video_id>/*.jpg)")
+        return sorted(sub_files, key=lambda p: (p.parent.name, p.stem))
+
+    return []
 
 
 # ============================================================
@@ -198,23 +210,20 @@ def build_index(
     output_map: Path = OUTPUT_MAP,
     output_faiss: Path = OUTPUT_FAISS,
     rep_only: bool = False,
+    per_video: bool = False,
 ):
     """
-    Pipeline day du:
-      1. Load keyframes tu thu muc (hoac chi frame dai dien neu rep_only=True)
-      2. Trich xuat CLIP embedding theo batch that (1 forward pass / batch)
-      3. Ghep metadata (video_id, timestamp, scene_id) vao frame_index.json
-      4. Luu clip_features.npy va frame_index.json
-      5. Tao va luu FAISS index
+    Pipeline day du encode CLIP + luu output.
 
-    Args:
-        batch_size   : so anh xu ly trong 1 forward pass
-        keyframe_dir : thu muc chua anh keyframe
-        metadata_path: duong dan metadata JSON
-        output_features: dau ra clip_features.npy
-        output_map   : dau ra frame_index.json
-        output_faiss : dau ra index.faiss
-        rep_only     : neu True, chi index frame is_representative=True (ket qua A5)
+    per_video=False (default):
+      Luu 1 file clip_features.npy duy nhat chua tat ca video.
+      Dung khi chi 1 may xu ly tat ca.
+
+    per_video=True:
+      Luu moi video thanh 1 file rieng:
+        data/processed/clip-features/<video_id>.npy
+      Dung khi nhieu may xu ly song song, sau do gop lai bang
+        load_btc_data.py --mode build-self
     """
 
     # --- 4.1 Load model ---
@@ -258,8 +267,25 @@ def build_index(
 
     # --- 4.5 Luu clip_features.npy ---
     output_features.parent.mkdir(parents=True, exist_ok=True)
-    np.save(str(output_features), feature_matrix)
-    print(f"[SAVE] OK - {output_features.name} -> {output_features}")
+
+    if per_video:
+        # Luu moi video 1 file rieng → dung cho distributed processing
+        clip_feat_dir = DATA_DIR.parent / "processed" / "clip-features"
+        clip_feat_dir.mkdir(parents=True, exist_ok=True)
+        # Nhom frames theo video_id
+        video_groups = {}
+        for i, name in enumerate(frame_names):
+            meta = metadata_dict.get(name, {})
+            vid = meta.get("video_id", Path(name).parent.name if "/" in name else "unknown")
+            video_groups.setdefault(vid, []).append(i)
+        for vid, idxs in video_groups.items():
+            vfeats = feature_matrix[idxs]
+            vpath  = clip_feat_dir / f"{vid}.npy"
+            np.save(str(vpath), vfeats)
+        print(f"[SAVE] OK - Per-video .npy -> {clip_feat_dir} ({len(video_groups)} files)")
+    else:
+        np.save(str(output_features), feature_matrix)
+        print(f"[SAVE] OK - {output_features.name} -> {output_features}")
 
     # --- 4.6 Luu ban do index -> {filename, video_id, timestamp, scene_id, is_representative} ---
     # frame_index_clean.json: { "0": {"filename":..., "video_id":..., "timestamp":..., "scene_id":..., ...}, ... }
@@ -364,12 +390,25 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="A3+A5: CLIP Embedding + FAISS Indexer")
     parser.add_argument(
-        "--source", choices=["clean", "sample"], default="clean",
-        help="Dataset to index: 'clean' (A5 output, default) or 'sample' (raw A2 output)"
+        "--source", choices=["clean", "sample", "self"], default="self",
+        help=(
+            "Dataset to index:\n"
+            "  'self'  : output cua ingest.py moi (subfolder, BTC format) [default]\n"
+            "  'clean' : output A5 (keyframes_clean/)\n"
+            "  'sample': output ingest cu (keyframes/ phang)"
+        )
     )
     parser.add_argument(
         "--rep-only", action="store_true",
         help="Only index representative frames (is_representative=True from A5 grouping)"
+    )
+    parser.add_argument(
+        "--per-video", action="store_true",
+        help=(
+            "Luu moi video 1 file .npy rieng vao data/processed/clip-features/.\n"
+            "Dung khi nhieu may xu ly song song, sau do gop bang:\n"
+            "  python -m src.indexing.load_btc_data --mode build-self"
+        )
     )
     parser.add_argument(
         "--batch-size", type=int, default=BATCH_SIZE,
@@ -378,27 +417,33 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Chon duong dan theo source
-    if args.source == "sample":
+    if args.source == "self":
+        # Output cua ingest.py moi: subfolder per video
+        kf_dir   = DATA_DIR / "keyframes"       # data/processed/keyframes/<video_id>/
+        meta     = DATA_DIR / "metadata.json"   # tuong thich nguoc
+        out_feat = DATA_DIR / "clip_features_self.npy"
+        out_map  = DATA_DIR / "frame_index_self.json"
+        out_fais = DATA_DIR / "index_self.faiss"
+    elif args.source == "sample":
         kf_dir   = DATA_DIR / "keyframes"
         meta     = DATA_DIR / "metadata.json"
         out_feat = DATA_DIR / "clip_features.npy"
         out_map  = DATA_DIR / "frame_index.json"
         out_fais = DATA_DIR / "index.faiss"
-    else:  # clean (default)
+    else:  # clean (default A5)
         kf_dir   = KEYFRAME_DIR
         meta     = METADATA_PATH
         out_feat = OUTPUT_FEATURES
         out_map  = OUTPUT_MAP
         out_fais = OUTPUT_FAISS
 
-    print("=" * 50)
-    print("  A3+A5 — CLIP Embedding + FAISS Indexer")
-    print("=" * 50)
+    print("=" * 55)
+    print("  CLIP Embedding + FAISS Indexer")
+    print("=" * 55)
     print(f"  Source    : {args.source}")
     print(f"  Rep-only  : {args.rep_only}")
     print(f"  Keyframes : {kf_dir}")
-    print(f"  Metadata  : {meta}")
-    print(f"  Output    : {OUTPUT_DIR}")
+    print(f"  Output    : {DATA_DIR}")
     print()
 
     build_index(
@@ -409,4 +454,10 @@ if __name__ == "__main__":
         output_map=out_map,
         output_faiss=out_fais,
         rep_only=args.rep_only,
+        per_video=args.per_video,
     )
+
+    print()
+    print("BUOC TIEP THEO (sau khi co index):")
+    print("  python -m src.indexing.load_btc_data --mode build  (neu dung data BTC)")
+    print("  python -m src.retrieval.retriever                  (test retrieval)")
