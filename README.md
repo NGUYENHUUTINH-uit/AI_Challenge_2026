@@ -225,7 +225,7 @@ python -m src.indexing.ingest --source raw
 python -c "import shutil; shutil.make_archive('keyframes', 'zip', 'data/processed', 'keyframes')"
 ```
 
-Sau đó **upload `keyframes.zip` lên Google Drive** → sang Bước 3 (Colab) để chạy Encode CLIP + Object Detection.
+Sau đó **upload `keyframes.zip` lên Google Drive** → sang Bước 3 (Colab) để chạy Encode CLIP + Object Detection. (nhớ tạo thư mục AIC2026)
 
 ---
 
@@ -243,16 +243,24 @@ python -c "import shutil; shutil.unpack_archive('colab_results.zip', 'data/proce
 
 ---
 
-### Bước 5 — Người A gộp tất cả, build FAISS
+### 📩 Cách nộp kết quả cho Trưởng Nhóm
+
+Sau khi hoàn tất Bước 4, mỗi thành viên **gom đúng 3 mục sau** và gửi cho Trưởng Nhóm (qua Drive/Zalo/USB):
+1. `colab_results.zip` (Tải từ Drive về).
+2. Thư mục `data/processed/map-keyframes/` (Nằm trên máy tính).
+3. Thư mục `data/processed/media-info/` (Nằm trên máy tính).
+
+*(Lưu ý: Bạn có thể copy 3 mục này ra một thư mục riêng, nén lại thành `KetQua_TenBan.zip` rồi gửi cho gọn).*
+
+---
+
+### Bước 5 — Trưởng nhóm (Người A) gộp tất cả, build FAISS
 
 ```powershell
-# Nhận 4 thứ sau từ mỗi máy (qua Drive/USB):
-#   data\processed\clip-features\<video_id>.npy   ← CLIP features
-#   data\processed\map-keyframes\<video_id>.csv   ← frame map (frame_idx thật — BẮT BUỘC dùng đúng cột này)
-#   data\processed\objects\<video_id>\            ← object JSON (từ BTC hoặc tự detect)
-#   data\processed\media-info\<video_id>.json     ← metadata
+# Trưởng nhóm giải nén file của tất cả đồng đội,
+# Copy đè (merge) tất cả vào đúng thư mục `data/processed/` trên máy tính của mình.
 
-# Copy tất cả vào cùng 1 máy (Máy A), cấu trúc y hệt nhau.
+# Sau khi "hội tụ" đủ data của toàn đội, Trưởng nhóm chạy lệnh:
 python run.py --stage build-self
 
 # Kết quả:
