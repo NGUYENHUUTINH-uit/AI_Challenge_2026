@@ -6,13 +6,11 @@ retrieval hơn ReAct đầy đủ nhiều bước, vì mỗi lượt chỉ cần
 quyết định -> tìm kiếm -> ghi nhớ, không cần lặp nhiều bước suy luận
 liên tiếp trong cùng 1 lượt (điều đó sẽ tốn thời gian khi thi bấm giờ).
 
-Thiết kế injectable (search_fn, time_range_fn, llm_resolver đều truyền từ
-ngoài vào) để:
-  1. Test được hoàn toàn KHÔNG cần API key và KHÔNG cần chờ retriever.py
-     thật của D — dùng mock/stub.
-  2. Khi D xong retriever.py thật, chỉ đổi 1 dòng ở nơi khởi tạo Agent,
-     không sửa logic bên trong agent.py.
-  3. Khi có API key, bật LLM resolver mà không phải sửa lại class.
+HỖ TRỢ 3 DẠNG TRUY VẤN THEO ĐỀ THI CHÍNH THỨC (AIC 2026):
+  - Textual KIS: run(query) -> segments (video_id, frame range) — đã có từ đầu.
+  - Q&A: run(query, question=...) -> segments KÈM "answer" cho segment top-1,
+    dùng answer_fn (VQA) đọc ảnh khung hình đại diện để trả lời.
+  - TRAKE: xem event_sequence.py (module riêng).
 """
 import time
 from dataclasses import dataclass, field
@@ -30,6 +28,34 @@ class AgentConfig:
     temporal_config: TemporalConfig = field(default_factory=TemporalConfig)
     enable_timing_log: bool = False
     top_k: int = 50
+    max_segments_for_answer: int = 1  # số segment top đầu sẽ thử trả lời Q&A
+
+
+def _attach_representative_frame(segments: list[dict], raw_results: list[dict]) -> None:
+    """
+    Mỗi segment từ B4 chỉ có (start, end) — một KHOẢNG thời gian, không phải
+    1 khung hình cụ thể. Nhưng đề thi yêu cầu nộp CHÍNH XÁC 1 frame_id (KIS)
+    hoặc cần 1 ảnh cụ thể để trả lời câu hỏi (Q&A). Hàm này tìm frame có
+    similarity cao nhất TRONG khoảng [start, end] của mỗi segment, gắn thêm
+    "frame_idx"/"image_path"/"representative_timestamp" — sửa segments TRỰC
+    TIẾP (in-place), không đổi format trả về của find_time_range() (B4 vẫn
+    độc lập, không cần biết về frame_idx/image_path).
+    """
+    by_video: dict[str, list[dict]] = {}
+    for r in raw_results:
+        by_video.setdefault(r["video_id"], []).append(r)
+
+    for seg in segments:
+        candidates = [
+            r for r in by_video.get(seg["video_id"], [])
+            if seg["start"] <= r["timestamp"] <= seg["end"]
+        ]
+        if not candidates:
+            continue
+        best = max(candidates, key=lambda r: r["similarity"])
+        seg["representative_timestamp"] = best["timestamp"]
+        seg["frame_idx"] = best.get("frame_idx")
+        seg["image_path"] = best.get("image_path")
 
 
 class RetrievalAgent:
@@ -39,19 +65,23 @@ class RetrievalAgent:
         time_range_fn: Callable = find_time_range,
         llm_resolver: Optional[Callable[[str, str], dict]] = None,
         query_expander: Optional[Callable[[str], list[str]]] = None,
+        answer_fn: Optional[Callable[[str, str], Optional[str]]] = None,
         config: Optional[AgentConfig] = None,
     ):
         """
         search_fn: hàm search_keyframes(query, top_k) -> list[dict] — D-B1.
         time_range_fn: hàm find_time_range(keyframes, config) -> list[dict] — B4.
         llm_resolver: xem planner.py — None nghĩa là chạy rule-based only (free).
-        query_expander: hàm query -> list[str] biến thể — D-B2, tuỳ chọn ghép
-                        vào Agent để mở rộng truy vấn trước khi search.
+        query_expander: hàm query -> list[str] biến thể — D-B2, tuỳ chọn.
+        answer_fn: hàm (image_path, question) -> answer(str) — dùng cho dạng
+                   truy vấn Q&A. Xem qa_answer.py. None nghĩa là KHÔNG hỗ trợ
+                   Q&A (chỉ trả segments như KIS, bỏ qua "question" nếu có).
         """
         self.search_fn = search_fn
         self.time_range_fn = time_range_fn
         self.llm_resolver = llm_resolver
         self.query_expander = query_expander
+        self.answer_fn = answer_fn
         self.config = config or AgentConfig()
 
         self.memory = AgentMemory(
@@ -60,12 +90,15 @@ class RetrievalAgent:
         )
         self._llm_cache: dict = {}
 
-    def run(self, query: str) -> dict:
+    def run(self, query: str, question: Optional[str] = None) -> dict:
         """
         Vòng lặp ReAct 1 chu kỳ:
-          REASON (plan_action) -> ACT (search + temporal) -> OBSERVE (memory)
-        Trả về dict đầy đủ, kèm thông tin debug (action, timing) hữu ích khi
-        tinh chỉnh hệ thống ở giai đoạn 2.
+          REASON (plan_action) -> ACT (search + temporal [+ VQA nếu có question])
+          -> OBSERVE (memory)
+
+        question: nếu có giá trị (dạng truy vấn Q&A theo đề thi), sau khi tìm
+        được segment top, gọi answer_fn() với ảnh khung hình đại diện để sinh
+        "answer" — bỏ qua nếu answer_fn=None (chưa cấu hình VQA).
         """
         t0 = time.time()
 
@@ -105,7 +138,15 @@ class RetrievalAgent:
 
         # 3. Temporal localization (B4)
         segments = self.time_range_fn(raw_results, self.config.temporal_config)
+        _attach_representative_frame(segments, raw_results)
         t3 = time.time()
+
+        # 3b. Q&A: sinh answer cho (các) segment top nếu có question + answer_fn
+        if question is not None and self.answer_fn is not None:
+            for seg in segments[: self.config.max_segments_for_answer]:
+                image_path = seg.get("image_path")
+                seg["answer"] = self.answer_fn(image_path, question) if image_path else None
+        t4 = time.time()
 
         # 4. OBSERVE — cập nhật Memory
         focus_video = segments[0]["video_id"] if segments else None
@@ -123,7 +164,7 @@ class RetrievalAgent:
 
         if self.config.enable_timing_log:
             print(f"[Timing] plan={t1-t0:.3f}s search={t2-t1:.3f}s "
-                  f"temporal={t3-t2:.3f}s total={t3-t0:.3f}s")
+                  f"temporal={t3-t2:.3f}s answer={t4-t3:.3f}s total={t4-t0:.3f}s")
 
         return {
             "segments": segments,
@@ -131,5 +172,5 @@ class RetrievalAgent:
             "resolved_query": plan.resolved_query,
             "used_llm": plan.used_llm,
             "reasoning": plan.reasoning,
-            "latency_seconds": round(t3 - t0, 3),
+            "latency_seconds": round(t4 - t0, 3),
         }

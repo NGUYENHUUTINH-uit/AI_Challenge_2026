@@ -83,6 +83,9 @@ def make_search_fn(
                 "video_id": r["video_id"],
                 "timestamp": float(ts),
                 "similarity": similarity,
+                "frame_idx": r["frame_idx"],  # giữ lại — bắt buộc phải nộp frame_id
+                                                # theo đề thi chính thức (KIS/Q&A/TRAKE),
+                                                # không thể chỉ nộp timestamp.
                 "objects": r.get("objects", []),
                 "image_path": r.get("image_path"),
             })
