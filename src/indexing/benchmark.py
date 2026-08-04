@@ -25,9 +25,17 @@ from src.indexing.indexer import (
 # ============================================================
 # CONFIG
 # ============================================================
-REPEAT_FACTOR = 7      # 59 ảnh x 6 = 354 lượt encode - đủ lớn để đo ổn định trên CPU
-BATCH_SIZES = [1, 4, 8, 16, 32]
+REPEAT_FACTOR = 7      # đủ lớn để đo ổn định
+BATCH_SIZES = [1, 4, 8, 16, 32, 64, 128]   # thêm 64, 128 cho GPU test
 N_TRIALS = 3            # số lần lặp mỗi batch_size, lấy min để loại nhiễu hệ thống
+
+
+def _collect_benchmark_frames(keyframe_dir: Path) -> list:
+    """Hỗ trợ cả flat và subfolder format."""
+    sub = list(keyframe_dir.glob("*/*.jpg"))
+    if sub:
+        return sorted(sub, key=lambda p: (p.parent.name, p.name))
+    return sorted(keyframe_dir.glob("*.jpg"))
 
 
 def run_benchmark():
@@ -38,8 +46,8 @@ def run_benchmark():
     # 1. Load model
     model, preprocessor, device, backend = load_clip_model()
 
-    # 2. Lấy danh sách file ảnh gốc
-    base_paths = sorted(KEYFRAME_DIR.glob("*.jpg"), key=_sort_key)
+    # 2. Lấy danh sách file ảnh (hỗ trợ flat + subfolder)
+    base_paths = _collect_benchmark_frames(KEYFRAME_DIR)
     if not base_paths:
         print("No images found!")
         return

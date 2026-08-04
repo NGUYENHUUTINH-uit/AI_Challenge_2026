@@ -32,6 +32,41 @@ CLEAN_DIR    = DATA_DIR / "keyframes_clean"
 METADATA_IN  = DATA_DIR / "metadata.json"
 METADATA_OUT = DATA_DIR / "metadata_clean.json"
 
+
+# ══════════════════════════════════════════════════════════════════
+# 0b. THU THẪP FRAME HỔ TRỢ CẢ 2 FORMAT
+# ══════════════════════════════════════════════════════════════════
+
+def _collect_frames(keyframe_dir: Path) -> list:
+    """
+    Thu thập tất cả frame từ keyframe_dir, hỗ trợ cả 2 format:
+      - Flat     : keyframes/*.jpg  (format cũ)
+      - Subfolder: keyframes/<video_id>/*.jpg  (output mới của ingest.py)
+
+    Returns:
+        list of (meta_key: str, img_path: Path)
+        meta_key = "video_id/filename.jpg" (subfolder) hoặc "filename.jpg" (flat)
+        → khớp với key trong metadata.json do ingest.py sinh ra.
+    """
+    # Subfolder format (ingest.py mới — ưu tiên check trước)
+    sub_files = list(keyframe_dir.glob("*/*.jpg"))
+    if sub_files:
+        pairs = [
+            (f"{p.parent.name}/{p.name}", p)
+            for p in sorted(sub_files, key=lambda p: (p.parent.name, p.name))
+        ]
+        print(f"[A5] Format: subfolder (keyframes/<video_id>/*.jpg) — {len(pairs)} frames")
+        return pairs
+
+    # Flat format (cũ)
+    flat_files = list(keyframe_dir.glob("*.jpg"))
+    if flat_files:
+        pairs = [(p.name, p) for p in sorted(flat_files)]
+        print(f"[A5] Format: flat (keyframes/*.jpg) — {len(pairs)} frames")
+        return pairs
+
+    return []
+
 # ══════════════════════════════════════════════════════════════════
 # 1. NGƯỠNG LỌC (có thể tune tùy chất lượng camera)
 # ══════════════════════════════════════════════════════════════════
@@ -121,16 +156,15 @@ def run_filtering(
     lọc frame nhiễu, lưu frame sạch vào keyframes_clean/ và
     ghi metadata_clean.json với các trường bổ sung.
 
-    Trả về: metadata_clean (dict) — dùng ngay hoặc bỏ qua.
+    Hỗ trợ cả 2 format keyframe:
+      - Flat     : keyframes/*.jpg
+      - Subfolder: keyframes/<video_id>/*.jpg  (output của ingest.py mới)
 
-    Luồng xử lý mỗi frame:
-        load → compute_blur + compute_brightness
-             → if clean: normalize → lưu vào clean_dir
-             → ghi metadata (kể cả frame bị loại, is_clean=False)
+    Trả về: metadata_clean (dict) — dùng ngay hoặc bỏ qua.
     """
     clean_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load metadata gốc từ A2
+    # Load metadata gốc từ ingest.py (key = "video_id/filename.jpg")
     if metadata_in.exists():
         with open(metadata_in, "r", encoding="utf-8") as f:
             meta_orig = json.load(f)
@@ -139,25 +173,26 @@ def run_filtering(
         print(f"  [WARN] metadata.json not found at {metadata_in} — sẽ bỏ qua video_id/timestamp")
         meta_orig = {}
 
-    all_frames = sorted(keyframe_dir.glob("*.jpg"))
-    if not all_frames:
+    # Thu thập frame — hỗ trợ cả flat lẫn subfolder
+    frame_pairs = _collect_frames(keyframe_dir)  # [(meta_key, img_path), ...]
+    if not frame_pairs:
         raise FileNotFoundError(
             f"Không tìm thấy file .jpg trong: {keyframe_dir}\n"
             f"Hãy chạy ingest.py (A2) trước để trích keyframe."
         )
 
-    print(f"[A5] Found {len(all_frames)} raw keyframes in {keyframe_dir.name}/".encode('ascii', 'replace').decode('ascii'))
+    print(f"[A5] Found {len(frame_pairs)} raw keyframes to filter")
 
     metadata_clean = {}
     stats = {
-        "total":          len(all_frames),
+        "total":          len(frame_pairs),
         "blurry":         0,
         "bad_brightness": 0,
         "both":           0,
         "kept":           0,
     }
 
-    for img_path in tqdm(all_frames, desc="[A5] Filtering"):
+    for meta_key, img_path in tqdm(frame_pairs, desc="[A5] Filtering"):
         img = cv2.imread(str(img_path))
         if img is None:
             print(f"  [WARN] Cannot read {img_path.name} — skipping.")
@@ -178,10 +213,11 @@ def run_filtering(
         elif bad_light:
             stats["bad_brightness"] += 1
 
-        # Lấy thông tin gốc từ A2 (video_id, timestamp)
-        orig_meta = meta_orig.get(img_path.name, {})
+        # Lấy thông tin gốc từ ingest.py
+        # meta_key = "video_id/filename.jpg" — đúng với key trong metadata.json
+        orig_meta = meta_orig.get(meta_key, {})
 
-        metadata_clean[img_path.name] = {
+        metadata_clean[meta_key] = {
             **orig_meta,
             "blur_score": round(blur_score, 2),
             "brightness": round(brightness, 2),
@@ -191,9 +227,11 @@ def run_filtering(
         if not is_clean:
             continue
 
-        # Lưu frame sạch (chuẩn hóa letterbox nếu cần)
+        # Lưu frame sạch vào clean_dir/meta_key
+        # (tự tạo subfolder nếu cần: keyframes_clean/<video_id>/0000.jpg)
+        out_path = clean_dir / meta_key
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         out_img  = normalize_frame(img) if normalize else img
-        out_path = clean_dir / img_path.name
         cv2.imwrite(str(out_path), out_img)
         stats["kept"] += 1
 
