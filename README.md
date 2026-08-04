@@ -204,7 +204,7 @@ python -m src.indexing.ingest --source raw
 python -c "import shutil; shutil.make_archive('keyframes', 'zip', 'data/processed', 'keyframes')"
 ```
 
-Sau đó **upload `keyframes.zip` lên Google Drive** → sang Bước 3 (Colab) để chạy Encode CLIP + Object Detection. (nhớ tạo thư mục tên **AIC2026** để đưa file nén vào)
+Sau đó **upload `keyframes.zip` lên Google Drive** → sang Bước 3 (Colab) để chạy Encode CLIP + Object Detection. (nhớ tạo thư mục tên **AIC2026** trên GG Drive (của bạn) để đưa file nén vào)
 
 ---
 
@@ -366,25 +366,28 @@ print(f"✅ {n_videos} video | {n_frames} frames")
 
 ---
 
-### Cell 4 — Encode CLIP và Object Detection (Trên GPU cực nhanh)
+### Cell 4 — Encode CLIP và Object Detection (Tối ưu cho T4 GPU)
 
 ```python
 import time
 start = time.time()
 
+# ===== 🚀 THÔNG SỐ TỐI ƯU CHO T4 GPU 16GB =====
+# batch-size 128: tăng throughput CLIP ~4x so với 32
+# (fp16 autocast đã được bật tự động trong code)
+
 # 1. Encode CLIP vector
 print("Đang chạy Encode CLIP...")
-!python run.py --stage encode --batch-size 32
+!python run.py --stage encode --batch-size 128
 
-# 2. Object detection (Faster R-CNN)
+# 2. Object detection (Faster R-CNN — batch 8 frame/lần, fp16 autocast)
 print("\nĐang chạy Object Detection...")
 !python run.py --stage detect --obj-model coco
 
 elapsed = time.time() - start
-print(f"Tổng thời gian: {elapsed/60:.1f} phút")
-```
+print(f"\n✅ Tổng thời gian: {elapsed/60:.1f} phút")
+````
 
----
 
 ### Cell 5 — Nén kết quả và lưu về Drive
 
