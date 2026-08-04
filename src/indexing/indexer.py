@@ -108,7 +108,7 @@ def extract_batch_openai(image_paths, model, preprocess, device):
     use_amp = device != "cpu" and torch.cuda.is_available()
     with torch.no_grad():
         if use_amp:
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 features = model.encode_image(batch_tensor)
         else:
             features = model.encode_image(batch_tensor)

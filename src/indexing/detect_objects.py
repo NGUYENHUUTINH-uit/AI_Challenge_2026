@@ -248,7 +248,7 @@ def _detect_coco_batch(image_paths: list, model, device: str,
     use_amp = device != "cpu" and torch.cuda.is_available()
     with torch.no_grad():
         if use_amp:
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 batch_outputs = model(tensors)
         else:
             batch_outputs = model(tensors)

@@ -334,11 +334,12 @@ BRANCH = "main"   # ← thay tên nhánh của bạn nếu khác
 
 ---
 
-### Cell 2 — Cài thư viện (🆕 đã bỏ `faiss-gpu`)
+### Cell 2 — Cài thư viện
 
 ```python
 !pip install -q ftfy regex tqdm Pillow numpy pandas
 !pip install -q git+https://github.com/openai/CLIP.git
+!pip install -q faiss-cpu   
 
 import torch
 print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else '❌ KHÔNG CÓ GPU'}")
