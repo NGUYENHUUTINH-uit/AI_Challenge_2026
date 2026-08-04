@@ -95,9 +95,44 @@ KF_DIR_BTC  = DATA_DIR  / "btc" / "Keyframes" # data/btc/Keyframes/<video_id>/
 # Output objects
 OBJ_OUTPUT  = PROCESSED / "objects"           # data/processed/objects/<video_id>/
 
-# 🚀 Batch size cho object detection (gom nhiều frame → 1 lần forward pass)
-# T4 GPU 16GB: 8 frame/batch tối ưu cho Faster R-CNN ResNet50 FPN
+# 🚀 Batch size cho object detection
 DETECT_BATCH_SIZE = 8
+
+# File metadata_clean (output cua preprocess + group_scenes)
+METADATA_CLEAN = PROCESSED / "metadata_clean.json"
+
+
+# ============================================================
+# HELPER: LOAD REPRESENTATIVE FRAMES
+# ============================================================
+
+def _load_representative_set(metadata_path: Path = METADATA_CLEAN) -> set:
+    """
+    🚀 Đọc metadata_clean.json, trả về set các key ("video_id/filename.jpg")
+    có is_representative=True.
+
+    Dùng để detect object chỉ trên frame đại diện thay vì toàn bộ.
+    Giảm số frame detect ~60-80% → nhanh hơn ~3-5x.
+
+    Returns:
+        set of "video_id/filename.jpg" strings (rỗng nếu không có metadata)
+    """
+    if not metadata_path.exists():
+        print(f"  [WARN] Không tìm thấy {metadata_path.name}")
+        print(f"         Hãy chạy: python run.py --stage filter && python run.py --stage group-scenes")
+        print(f"         Fallback: detect toàn bộ frame.")
+        return set()
+
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    rep_set = {
+        key for key, info in meta.items()
+        if info.get("is_representative", False)
+    }
+    print(f"  [REP] Representative frames: {len(rep_set)} / {len(meta)} total "
+          f"({100*len(rep_set)/max(len(meta),1):.1f}%)")
+    return rep_set
 
 
 # ============================================================
@@ -248,7 +283,7 @@ def _detect_coco_batch(image_paths: list, model, device: str,
     use_amp = device != "cpu" and torch.cuda.is_available()
     with torch.no_grad():
         if use_amp:
-            with torch.amp.autocast('cuda'):
+            with torch.cuda.amp.autocast():
                 batch_outputs = model(tensors)
         else:
             batch_outputs = model(tensors)
@@ -342,13 +377,18 @@ def detect_video(video_id: str, model, device: str,
                  output_dir: Path = OBJ_OUTPUT,
                  score_threshold: float = 0.3,
                  skip_existing: bool = True,
-                 batch_size: int = DETECT_BATCH_SIZE) -> int:
+                 batch_size: int = DETECT_BATCH_SIZE,
+                 rep_only_set: set = None) -> int:
     """
     Chay object detection tren tat ca keyframe cua 1 video.
     Luu JSON vao output_dir/<video_id>/<frame_name>.json.
 
     🚀 Tối ưu: Gom frames thành batch (batch_size=8) thay vì detect từng frame.
     Faster R-CNN torchvision hỗ trợ batch natively → nhanh hơn ~3-5x trên GPU.
+
+    Args:
+        rep_only_set: set of "video_id/filename.jpg" — nếu không None,
+                      chỉ detect frame có key nằm trong set này.
     Returns: So frame da xu ly
     """
     kf_video_dir = keyframe_dir / video_id
@@ -361,6 +401,16 @@ def detect_video(video_id: str, model, device: str,
         print(f"  [WARN] Khong co file .jpg trong {kf_video_dir}")
         return 0
 
+    # Lọc representative frames nếu có yêu cầu
+    if rep_only_set:
+        jpg_files = [
+            p for p in jpg_files
+            if f"{video_id}/{p.name}" in rep_only_set
+        ]
+        if not jpg_files:
+            print(f"  [WARN] Không có representative frame nào cho {video_id} trong metadata_clean.json")
+            return 0
+
     out_video_dir = output_dir / video_id
     out_video_dir.mkdir(parents=True, exist_ok=True)
 
@@ -370,14 +420,14 @@ def detect_video(video_id: str, model, device: str,
     for jpg_path in jpg_files:
         out_json = out_video_dir / f"{jpg_path.stem}.json"
         if skip_existing and out_json.exists():
-            count += 1  # đã có, tính vào tổng
+            count += 1
         else:
             pending.append(jpg_path)
 
     if not pending:
-        return count  # tất cả đã detect rồi
+        return count
 
-    # Batch processing (chỉ dùng batch cho COCO, các model khác vẫn frame-by-frame)
+    # Batch processing
     use_batch = (model_name == "coco" and batch_size > 1)
 
     if use_batch:
@@ -405,7 +455,6 @@ def detect_video(video_id: str, model, device: str,
                     except Exception as e2:
                         print(f"  [WARN] {jpg_path.name}: {e2}")
     else:
-        # Fallback: frame-by-frame cho openimages / grounding-dino
         for jpg_path in tqdm(pending, desc=f"  {video_id}", leave=False):
             out_json = out_video_dir / f"{jpg_path.stem}.json"
             try:
@@ -430,9 +479,19 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
                video_id: str = None,
                model_name: str = "coco",
                score_threshold: float = 0.3,
-               skip_existing: bool = True):
-    """Chay object detection toan bo thu muc keyframe."""
+               skip_existing: bool = True,
+               rep_only: bool = False):
+    """Chay object detection toan bo thu muc keyframe.
+
+    Args:
+        rep_only: Nếu True, chỉ detect frame có is_representative=True
+                  trong metadata_clean.json (cần chạy filter + group-scenes trước).
+                  Giảm số frame detect ~60-80% → nhanh hơn ~3-5x.
+    """
     model, device, model_name = load_model(model_name)
+
+    # Load representative set nếu có yêu cầu
+    rep_only_set = _load_representative_set() if rep_only else None
 
     if video_id:
         video_dirs = [keyframe_dir / video_id]
@@ -449,8 +508,9 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
         "grounding-dino": f"Grounding DINO zero-shot ({len(GROUNDING_DINO_CLASSES)} custom classes)",
     }
 
+    mode_label = "REPRESENTATIVE ONLY" if rep_only else "ALL FRAMES"
     print(f"\n{'='*60}")
-    print(f"  OBJECT DETECTION — {len(video_dirs)} videos")
+    print(f"  OBJECT DETECTION — {len(video_dirs)} videos  [{mode_label}]")
     print(f"  Model  : {model_labels.get(model_name, model_name)}")
     print(f"  Device : {device.upper()}")
     print(f"  Nguon  : {keyframe_dir}")
@@ -470,18 +530,15 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
             output_dir=output_dir,
             score_threshold=score_threshold,
             skip_existing=skip_existing,
+            rep_only_set=rep_only_set,
         )
         print(f"  Done: {n} frames")
         total_frames += n
 
     print(f"\n{'='*60}")
-    print(f"DETECT DONE! {total_frames} frames")
+    print(f"DETECT DONE! {total_frames} frames [{mode_label}]")
     print(f"Output: {output_dir}")
     print(f"{'='*60}")
-    print()
-    print("BUOC TIEP THEO:")
-    print("  python -m src.indexing.load_btc_data --mode build")
-    print("  -> Objects se duoc nap tu dong vao frame_index_btc.json")
 
 
 # ============================================================
@@ -528,6 +585,14 @@ if __name__ == "__main__":
         "--no-skip", action="store_true",
         help="Chay lai du da co file JSON (mac dinh: bo qua file da xu ly)"
     )
+    parser.add_argument(
+        "--rep-only", action="store_true",
+        help=(
+            "🚀 Chỉ detect frame đại diện (is_representative=True từ metadata_clean.json).\n"
+            "   Giảm số frame detect ~60-80%% → nhanh hơn ~3-5x.\n"
+            "   Yêu cầu chạy trước: python run.py --stage filter && python run.py --stage group-scenes"
+        )
+    )
     args = parser.parse_args()
 
     if args.keyframe_dir:
@@ -544,4 +609,5 @@ if __name__ == "__main__":
         model_name=args.model,
         score_threshold=args.score_threshold,
         skip_existing=not args.no_skip,
+        rep_only=args.rep_only,
     )

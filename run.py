@@ -50,7 +50,9 @@ def stage_detect(args):
     cmd = [sys.executable, "-m", "src.indexing.detect_objects",
            "--model", args.obj_model,
            "--source", "self"]
-    run_cmd(cmd, f"OBJECT DETECTION (model={args.obj_model})")
+    if getattr(args, "rep_only", False):
+        cmd.append("--rep-only")
+    run_cmd(cmd, f"OBJECT DETECTION (model={args.obj_model}, rep_only={getattr(args,'rep_only',False)})")
 
 
 def stage_encode(args):
@@ -125,8 +127,13 @@ def main():
     )
 
     parser.add_argument(
+        "--rep-only", action="store_true",
+        help="[detect] Chỉ detect representative frames (cần chạy filter + group-scenes trước)"
+    )
+
+    parser.add_argument(
         "--batch-size", type=int, default=32,
-        help="Batch size cho CLIP encoding (default: 32, Colab GPU: 64)"
+        help="Batch size cho CLIP encoding (default: 32, Colab GPU: 128)"
     )
 
     args = parser.parse_args()
