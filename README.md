@@ -339,7 +339,8 @@ BRANCH = "main"   # ← thay tên nhánh của bạn nếu khác
 ```python
 !pip install -q ftfy regex tqdm Pillow numpy pandas
 !pip install -q git+https://github.com/openai/CLIP.git
-!pip install -q faiss-cpu   
+!pip install -q faiss-cpu          # cần thiết cho indexer.py
+!pip install -q ultralytics        # YOLOv8m — nhanh hơn Faster R-CNN ~8x
 
 import torch
 print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else '❌ KHÔNG CÓ GPU'}")
@@ -381,9 +382,9 @@ start = time.time()
 print("Đang chạy Encode CLIP...")
 !python run.py --stage encode --batch-size 128
 
-# 2. Object detection (Faster R-CNN — batch 8 frame/lần, fp16 autocast)
+# 2. Object detection (YOLOv8m — nhanh hơn Faster R-CNN ~8x, mAP cao hơn)
 print("\nĐang chạy Object Detection...")
-!python run.py --stage detect --obj-model coco
+!python run.py --stage detect --obj-model yolo
 
 elapsed = time.time() - start
 print(f"\n✅ Tổng thời gian: {elapsed/60:.1f} phút")

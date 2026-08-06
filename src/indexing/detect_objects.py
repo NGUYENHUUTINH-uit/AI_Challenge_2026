@@ -144,14 +144,17 @@ def load_model(model_name: str = "coco", device: str = None):
     Factory function: tra ve (model, device, model_name).
 
     model_name:
-      'coco'          : Faster R-CNN torchvision COCO 80 classes  [mac dinh, khong can cai them]
-      'openimages'    : Faster R-CNN TF Hub OpenImages V4 600 classes [giong het BTC, can tensorflow]
-      'grounding-dino': Grounding DINO zero-shot [linh hoat nhat, can pip install groundingdino]
+      'yolo'          : YOLOv8m (Ultralytics) — 80 classes, NHANH NHAT, DE DUNG NHAT
+      'coco'          : Faster R-CNN torchvision COCO 80 classes  [mac dinh]
+      'openimages'    : Faster R-CNN TF Hub OpenImages V4 600 classes [can tensorflow]
+      'grounding-dino': Grounding DINO zero-shot [can pip install groundingdino]
     """
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if model_name == "openimages":
+    if model_name == "yolo":
+        return _load_yolo(device)
+    elif model_name == "openimages":
         return _load_openimages(device)
     elif model_name == "grounding-dino":
         return _load_grounding_dino(device)
@@ -168,6 +171,33 @@ def _load_coco(device: str):
     model.eval()
     print("[MODEL] OK")
     return model, device, "coco"
+
+
+def _load_yolo(device: str):
+    """
+    🚀 YOLOv8m (Ultralytics) — COCO 80 classes.
+    Cần: pip install ultralytics
+
+    Ƭu điểm so với Faster R-CNN:
+      - Tốc độ: ~80 FPS trên T4 GPU (so với ~10 FPS của Faster R-CNN)
+      - Độ chính xác: mAP 50.2 (so với 37.0)
+      - Model size: 49MB (so với 160MB)
+      - Tự tải về lần đầu, cache tự động
+    """
+    try:
+        from ultralytics import YOLO
+    except ImportError:
+        raise ImportError(
+            "Cần cài ultralytics:\n"
+            "  pip install ultralytics\n"
+            "(Thêm vào Cell 2 Colab trước khi chạy)"
+        )
+
+    print(f"[MODEL] YOLOv8m COCO (80 classes) on {device.upper()}")
+    model = YOLO("yolov8m.pt")  # tự tải về nếu chưa có (~49MB)
+    model.to(device)
+    print("[MODEL] OK — YOLOv8m (mAP 50.2, ~80 FPS trên T4)")
+    return model, device, "yolo"
 
 
 def _load_openimages(device: str):
@@ -236,7 +266,10 @@ def detect_frame(image_path: Path, model, device: str,
     Chay object detection tren 1 anh, tu dong chon backend dua theo model_name.
     Tra ve list: [{"class": "person", "score": 0.98, "box": [x1,y1,x2,y2]}, ...]
     """
-    if model_name == "openimages":
+    if model_name == "yolo":
+        results = _detect_yolo_batch([image_path], model, score_threshold)
+        return results[0] if results else []
+    elif model_name == "openimages":
         return _detect_openimages(image_path, model, score_threshold)
     elif model_name == "grounding-dino":
         return _detect_grounding_dino(image_path, model, device, score_threshold)
@@ -248,6 +281,52 @@ def _detect_coco(image_path, model, device, score_threshold):
     """COCO 80 classes — detect 1 frame (wrapper gọi batch version)."""
     results_list = _detect_coco_batch([image_path], model, device, score_threshold)
     return results_list[0] if results_list else []
+
+
+def _detect_yolo_batch(image_paths: list, model,
+                       score_threshold: float = 0.3) -> list:
+    """
+    🚀 YOLOv8m — detect NHIỀU FRAME trong 1 lần gọi (batch inference native).
+    YOLOv8 (Ultralytics) hỗ trợ batch string paths trực tiếp.
+
+    Output JSON format GIONG HET _detect_coco_batch():
+        list[list[dict]]  với dict = {"class": str, "score": float, "box": [x1,y1,x2,y2]}
+
+    Tốc độ: ~80 FPS trên T4 GPU (vs ~10 FPS của Faster R-CNN)
+    """
+    str_paths = [str(p) for p in image_paths]
+    results_all = [[] for _ in range(len(image_paths))]
+
+    try:
+        # YOLOv8 nhận list đường dẫn — tự động batch trên GPU
+        batch_results = model(str_paths, verbose=False)
+    except Exception as e:
+        print(f"  [WARN] YOLOv8 batch error: {e}")
+        return results_all
+
+    for i, result in enumerate(batch_results):
+        frame_results = []
+        boxes = result.boxes
+        if boxes is None:
+            results_all[i] = []
+            continue
+
+        for cls_id, conf, xyxy in zip(
+            boxes.cls.cpu().tolist(),
+            boxes.conf.cpu().tolist(),
+            boxes.xyxy.cpu().tolist()
+        ):
+            if conf < score_threshold:
+                continue
+            class_name = result.names[int(cls_id)]  # "person", "car", ...
+            frame_results.append({
+                "class": class_name,
+                "score": round(conf, 4),
+                "box":   [round(v, 1) for v in xyxy],  # [x1, y1, x2, y2]
+            })
+        results_all[i] = frame_results
+
+    return results_all
 
 
 def _detect_coco_batch(image_paths: list, model, device: str,
@@ -428,16 +507,21 @@ def detect_video(video_id: str, model, device: str,
         return count
 
     # Batch processing
-    use_batch = (model_name == "coco" and batch_size > 1)
+    use_batch = (model_name in ("coco", "yolo") and batch_size > 1)
 
     if use_batch:
         for i in tqdm(range(0, len(pending), batch_size),
                       desc=f"  {video_id}", leave=False):
             batch_paths = pending[i: i + batch_size]
             try:
-                batch_results = _detect_coco_batch(
-                    batch_paths, model, device, score_threshold
-                )
+                if model_name == "yolo":
+                    batch_results = _detect_yolo_batch(
+                        batch_paths, model, score_threshold
+                    )
+                else:
+                    batch_results = _detect_coco_batch(
+                        batch_paths, model, device, score_threshold
+                    )
                 for jpg_path, detections in zip(batch_paths, batch_results):
                     out_json = out_video_dir / f"{jpg_path.stem}.json"
                     with open(out_json, "w", encoding="utf-8") as f:
@@ -448,7 +532,9 @@ def detect_video(video_id: str, model, device: str,
                 for jpg_path in batch_paths:
                     out_json = out_video_dir / f"{jpg_path.stem}.json"
                     try:
-                        det = _detect_coco([jpg_path], model, device, score_threshold)
+                        det = detect_frame(jpg_path, model, device,
+                                           model_name=model_name,
+                                           score_threshold=score_threshold)
                         with open(out_json, "w", encoding="utf-8") as f:
                             json.dump(det, f, ensure_ascii=False)
                         count += 1
@@ -503,7 +589,8 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
         return
 
     model_labels = {
-        "coco":           "COCO 80 classes (torchvision)",
+        "yolo":           "YOLOv8m COCO 80 classes (Ultralytics) — 🚀 NHANH NHAT",
+        "coco":           "Faster R-CNN COCO 80 classes (torchvision)",
         "openimages":     "OpenImages V4 600 classes (TF Hub) — GIONG HET BTC",
         "grounding-dino": f"Grounding DINO zero-shot ({len(GROUNDING_DINO_CLASSES)} custom classes)",
     }
@@ -551,10 +638,11 @@ if __name__ == "__main__":
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        "--model", choices=["coco", "openimages", "grounding-dino"], default="coco",
+        "--model", choices=["yolo", "coco", "openimages", "grounding-dino"], default="yolo",
         help=(
             "Chon model:\n"
-            "  coco          : Faster R-CNN COCO 80 classes [mac dinh, khong can cai them]\n"
+            "  yolo          : YOLOv8m COCO 80 classes [🚀 MAC DINH MOI, can: pip install ultralytics]\n"
+            "  coco          : Faster R-CNN COCO 80 classes [khong can cai them, nhung cham hon]\n"
             "  openimages    : Faster R-CNN OpenImages V4 600 classes [giong het BTC]\n"
             "                  -> can: pip install tensorflow tensorflow-hub\n"
             "  grounding-dino: Zero-shot, dung GROUNDING_DINO_CLASSES [linh hoat nhat]\n"
