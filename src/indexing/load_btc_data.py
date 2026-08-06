@@ -426,11 +426,29 @@ if __name__ == "__main__":
     elif args.mode == "build-self":
         # Build FAISS tu data TU TAO cua pipeline (khong phai data BTC)
         # Dung sau khi nhieu may da encode CLIP per-video va gop .npy ve 1 may
+        PROCESSED = OUTPUT_DIR
         SELF_FEAT_DIR = PROCESSED / "clip-features"     # data/processed/clip-features/
         SELF_MAP_DIR  = PROCESSED / "map-keyframes"     # data/processed/map-keyframes/
         SELF_OUT_FAISS   = PROCESSED / "index_self.faiss"
         SELF_OUT_MAP     = PROCESSED / "frame_index_self.json"
         SELF_OUT_FEATURES = PROCESSED / "clip_features_self.npy"
+
+        # Tự động tách unknown.npy theo các file CSV nếu có
+        unknown_file = SELF_FEAT_DIR / "unknown.npy"
+        if unknown_file.exists():
+            print("[INFO] Tự động tách unknown.npy theo danh sách video CSV...")
+            u_data = np.load(unknown_file)
+            csv_files = sorted(SELF_MAP_DIR.glob("*.csv"))
+            offset = 0
+            for csv_file in csv_files:
+                vid = csv_file.stem
+                df_count = sum(1 for _ in open(csv_file, encoding="utf-8")) - 1
+                if df_count > 0 and offset + df_count <= len(u_data):
+                    sub_feats = u_data[offset : offset + df_count]
+                    np.save(str(SELF_FEAT_DIR / f"{vid}.npy"), sub_feats)
+                    print(f"  -> Tách {vid}.npy: shape {sub_feats.shape}")
+                    offset += df_count
+            unknown_file.unlink()
 
         if not SELF_FEAT_DIR.exists() or not any(SELF_FEAT_DIR.glob("*.npy")):
             print(f"[LOI] Khong tim thay .npy trong {SELF_FEAT_DIR}")

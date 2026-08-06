@@ -108,7 +108,7 @@ def extract_batch_openai(image_paths, model, preprocess, device):
     use_amp = device != "cpu" and torch.cuda.is_available()
     with torch.no_grad():
         if use_amp:
-            with torch.amp.autocast('cuda'):
+            with torch.cuda.amp.autocast():
                 features = model.encode_image(batch_tensor)
         else:
             features = model.encode_image(batch_tensor)
@@ -268,7 +268,11 @@ def build_index(
             continue
 
         all_features.append(feats)
-        frame_names.extend([p.name for p in valid_paths])
+        for p in valid_paths:
+            if p.parent.name not in ("keyframes", "keyframes_clean"):
+                frame_names.append(f"{p.parent.name}/{p.name}")
+            else:
+                frame_names.append(p.name)
 
     if not all_features:
         raise RuntimeError("No embeddings could be extracted!")
