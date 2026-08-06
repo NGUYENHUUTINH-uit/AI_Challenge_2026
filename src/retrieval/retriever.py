@@ -186,27 +186,40 @@ class Retriever:
             if faiss_idx < 0:       # FAISS tr\u1ea3 -1 khi kh\u00f4ng \u0111\u1ee7 k\u1ebft qu\u1ea3
                 continue
 
-            info     = self._frame_map.get(str(faiss_idx), {})
-            filename = info.get("filename", "")
+            info = self._frame_map.get(str(faiss_idx), {})
+
+            # Lấy filename: nếu không có key 'filename', format từ n (n-1:04d.jpg) hoặc frame_idx
+            filename = info.get("filename")
+            if not filename:
+                n_val = info.get("n", 1)
+                filename = f"{int(n_val) - 1:04d}.jpg"
+
             video_id = info.get("video_id") or (
                 filename.split("/")[0] if "/" in filename else "unknown"
             )
             frame_name = Path(filename).name    # "0042.jpg"
 
-            # 4. Load objects t\u1eeb JSON
+            # Lấy timestamp: ưu tiên 'timestamp', fallback 'pts_time'
+            timestamp = info.get("timestamp")
+            if timestamp is None:
+                timestamp = info.get("pts_time")
+            if timestamp is not None:
+                timestamp = round(float(timestamp), 2)
+
+            # 4. Load objects từ JSON
             objects = self._load_objects(video_id, frame_name)
 
-            # 5. Image path \u0111\u1ec3 UI hi\u1ec3n th\u1ecb
+            # 5. Image path cho UI
             img_path = str(self._keyframe_dir / video_id / frame_name)
 
             results.append({
-                "video_id":  video_id,
-                "filename":  frame_name,
-                "timestamp": info.get("timestamp"),
-                "score":     round(float(score), 4),
-                "objects":   objects,
+                "video_id":   video_id,
+                "filename":   frame_name,
+                "timestamp":  timestamp,
+                "score":      round(float(score), 4),
+                "objects":    objects,
                 "image_path": img_path,
-                "scene_id":  info.get("scene_id"),
+                "scene_id":   info.get("scene_id"),
             })
 
         return results
