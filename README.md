@@ -371,24 +371,30 @@ print(f"✅ {n_videos} video | {n_frames} frames")
 ### Cell 4 — Encode CLIP và Object Detection (Tối ưu cho T4 GPU)
 
 ```python
-import time
+import os, time
+
+# ĐỔI THƯ MỤC làm việc vào dự án (PHẢI CÓ DÒNG NÀY)
+%cd /content/AI_Challenge_2026
+print(f"Working dir: {os.getcwd()}")
+
 start = time.time()
 
 # ===== 🚀 THÔNG SỐ TỐI ƯU CHO T4 GPU 16GB =====
 # batch-size 128: tăng throughput CLIP ~4x so với 32
-# (fp16 autocast đã được bật tự động trong code)
+# YOLOv8m: nhanh hơn Faster R-CNN ~8x, mAP cao hơn
 
 # 1. Encode CLIP vector
-print("Đang chạy Encode CLIP...")
+print("\nĐang chạy Encode CLIP...")
 !python run.py --stage encode --batch-size 128
 
-# 2. Object detection (YOLOv8m — nhanh hơn Faster R-CNN ~8x, mAP cao hơn)
+# 2. Object detection (YOLOv8m)
 print("\nĐang chạy Object Detection...")
 !python run.py --stage detect --obj-model yolo
 
 elapsed = time.time() - start
 print(f"\n✅ Tổng thời gian: {elapsed/60:.1f} phút")
-````
+```
+
 
 
 ### Cell 5 — Nén kết quả và lưu về Drive
