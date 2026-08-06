@@ -121,9 +121,9 @@ def main():
 
     parser.add_argument(
         "--obj-model",
-        choices=["coco", "openimages", "grounding-dino"],
-        default="coco",
-        help="Model object detection (default: coco)"
+        choices=["yolo", "coco", "openimages", "grounding-dino"],
+        default="yolo",
+        help="Model object detection (default: yolo = YOLOv8m, nhanh ~8x)"
     )
 
     parser.add_argument(
