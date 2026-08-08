@@ -86,32 +86,31 @@ def extract_keyframes(video_path: Path, video_id: str,
     out_dir.mkdir(parents=True, exist_ok=True)
 
     step = max(1, int(fps * fps_step))   # khoang cach frame giua moi lan lay
-    keyframe_rows = []
-    n = 0  # thu tu keyframe (bat dau tu 1, giong BTC)
 
-    frame_idx = 0  # vi tri that trong video (dung de nop bai)
-    while True:
+    # Danh sach cac frame_idx can lay (seek truc tiep, nhanh hon ~10x so voi doc tuan tu)
+    target_frames = list(range(0, total_frames, step))
+
+    keyframe_rows = []
+    for n_idx, frame_idx in enumerate(target_frames):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
         ret, frame = cap.read()
         if not ret:
-            break
+            continue
 
-        if frame_idx % step == 0:
-            n += 1
-            pts_time = frame_idx / fps          # timestamp that (giay)
-            frame_name = f"{n - 1:04d}.jpg"    # "0000.jpg", "0001.jpg",... (giong BTC)
-            cv2.imwrite(str(out_dir / frame_name), frame)
+        n = n_idx + 1
+        pts_time  = frame_idx / fps
+        frame_name = f"{n - 1:04d}.jpg"
+        cv2.imwrite(str(out_dir / frame_name), frame)
 
-            keyframe_rows.append({
-                "n":         n,
-                "pts_time":  round(pts_time, 4),
-                "fps":       round(fps, 2),
-                "frame_idx": frame_idx,         # gia tri can nop cho BTC
-            })
-
-        frame_idx += 1
+        keyframe_rows.append({
+            "n":         n,
+            "pts_time":  round(pts_time, 4),
+            "fps":       round(fps, 2),
+            "frame_idx": frame_idx,
+        })
 
     cap.release()
-    print(f"  Da trich: {n} keyframes -> {out_dir}")
+    print(f"  Da trich: {len(keyframe_rows)} keyframes -> {out_dir}")
     return keyframe_rows
 
 
