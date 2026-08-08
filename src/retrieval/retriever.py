@@ -36,6 +36,38 @@ _SOURCES = [
 OBJECTS_DIR = DATA_DIR / "objects"
 
 
+def _is_vietnamese(text: str) -> bool:
+    """Phát hiện tiếng Việt bằng cách kiểm tra các dấu thanh đặc trưng."""
+    import unicodedata
+    for ch in text:
+        name = unicodedata.name(ch, "")
+        # Tiếng Việt có combining tone marks (COMBINING GRAVE/ACUTE/HOOK/TILDE/DOT)
+        # và các chữ cái đặc trưng như Đ/đ, Ơ/ơ, Ư/ư, Ă/ă
+        if any(x in name for x in (
+            "COMBINING", "WITH GRAVE", "WITH ACUTE", "WITH HOOK",
+            "WITH TILDE", "WITH DOT BELOW", "WITH CIRCUMFLEX",
+        )):
+            return True
+        if ch in "ĐđƠơƯưĂă":
+            return True
+    return False
+
+
+def _translate_vi_to_en(text: str) -> str:
+    """
+    Dịch tiếng Việt → tiếng Anh bằng deep-translator (Google Translate).
+    Fallback trả về text gốc nếu không có mạng hoặc lỗi.
+    """
+    try:
+        from deep_translator import GoogleTranslator
+        translated = GoogleTranslator(source='vi', target='en').translate(text)
+        print(f"[Trans] Việt: '{text}' → Anh: '{translated}'")
+        return translated
+    except Exception as e:
+        print(f"[Trans] Không thể dịch (offline?): {e} — dùng query gốc")
+        return text
+
+
 class Retriever:
     """
     Retriever th\u1eadt \u2014 n\u1ed1i v\u00e0o FAISS + CLIP + YOLOv8m objects.
@@ -103,10 +135,17 @@ class Retriever:
         self._loaded = True
 
     # ----------------------------------------------------------
-    # ENCODE TEXT QUERY \u2192 VECTOR
+    # ENCODE TEXT QUERY → VECTOR
     # ----------------------------------------------------------
     def _encode_text(self, query: str) -> np.ndarray:
-        """Encode c\u00e2u text \u2192 vector 512 chi\u1ec1u (float32, L2-normalized)."""
+        """
+        Encode câu text → vector 512 chiều (float32, L2-normalized).
+        Tự động dịch Việt → Anh trước khi encode vì CLIP train bằng tiếng Anh.
+        """
+        # Dịch sang tiếng Anh nếu phát hiện tiếng Việt
+        if _is_vietnamese(query):
+            query = _translate_vi_to_en(query)
+
         import torch
         with torch.no_grad():
             if self._backend == "openai":
