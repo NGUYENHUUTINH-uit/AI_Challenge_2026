@@ -48,3 +48,5 @@ httpx                     # test FastAPI async
 
 # ===== UTILITIES =====
 python-dotenv             # đọc .env (API keys)
+deep-translator           # dịch tiếng Việt → Anh trước khi encode CLIP
+ultralytics               # YOLOv8m object detection
