@@ -421,5 +421,80 @@ shutil.copy(
     "/content/drive/MyDrive/AIC2026/colab_results.zip"
 )
 print("✅ Đã lưu colab_results.zip lên Drive!")
+print("✅ Đã lưu colab_results.zip lên Drive!")
 print("   → Tải về máy Local rồi giải nén vào data/processed/, sau đó chạy: python run.py --stage build-self")
 ```
+
+---
+
+## 9. Chạy hệ thống Local (sau khi đã có FAISS Index)
+
+> ✅ Yêu cầu: Đã hoàn thành pipeline trên Colab và tải `colab_results.zip` về máy, sau đó chạy `python run.py --stage build-self` để tạo `index_self.faiss`.
+
+### Bước 1 — Giải nén kết quả Colab về máy
+
+```powershell
+# Giải nén vào đúng thư mục
+Expand-Archive -Path colab_results.zip -DestinationPath data\processed\ -Force
+```
+
+### Bước 2 — Build FAISS Index
+
+```powershell
+venv\Scripts\activate.bat
+python run.py --stage build-self
+```
+
+Kết quả tạo ra:
+- `data/processed/index_self.faiss`
+- `data/processed/frame_index_self.json`
+
+### Bước 3 — Bật Backend API Server
+
+```powershell
+uvicorn src.backend.api:app --reload --port 8000
+```
+
+Chờ đến khi thấy:
+```
+INFO: Application startup complete.
+```
+
+> ⚠️ Lần khởi động đầu tiên CLIP model cần load (~30-60 giây).
+
+### Bước 4 — Mở UI tìm kiếm
+
+Bấm đúp chuột mở file `ui/index.html` trên trình duyệt (Chrome/Edge).
+
+- Gõ câu truy vấn **tiếng Việt hoặc tiếng Anh** vào ô tìm kiếm
+- Bấm **TRUY XUẤT DỮ LIỆU** hoặc nhấn **Enter**
+- Hệ thống tự động dịch tiếng Việt → Anh → encode CLIP → FAISS search → hiển thị keyframe
+
+### Ví dụ query tốt
+
+| Tiếng Việt | Tiếng Anh tương đương |
+|---|---|
+| người đi xe máy | person riding motorcycle |
+| đám đông trên đường phố | crowd on the street |
+| xe ô tô ban đêm | car driving at night |
+| người đội mũ bảo hiểm | person wearing helmet |
+
+---
+
+## 10. Cài thêm thư viện thiếu (nếu gặp lỗi)
+
+```powershell
+venv\Scripts\activate.bat
+
+# Thiếu faiss
+pip install faiss-cpu
+
+# Thiếu uvicorn / fastapi
+pip install fastapi uvicorn python-multipart
+
+# Thiếu dịch tiếng Việt
+pip install deep-translator
+
+# Thiếu YOLOv8
+pip install ultralytics
+```
