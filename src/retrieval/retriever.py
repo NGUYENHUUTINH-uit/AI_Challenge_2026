@@ -18,9 +18,15 @@ from pathlib import Path
 SRC_DIR      = Path(__file__).resolve().parent
 PROJECT_ROOT = SRC_DIR.parent.parent
 DATA_DIR     = PROJECT_ROOT / "data" / "processed"
+BTC_DIR      = PROJECT_ROOT / "data" / "btc"
 
-# \u01afu ti\u00ean source 'self' (output pipeline c\u1ee7a nh\u00f3m), fallback 'clean'
+# Ưu tiên BTC index → self → clean
 _SOURCES = [
+    {
+        "faiss":     DATA_DIR / "index_btc.faiss",
+        "map":       DATA_DIR / "frame_index_btc.json",
+        "keyframes": BTC_DIR  / "Keyframes",
+    },
     {
         "faiss":     DATA_DIR / "index_self.faiss",
         "map":       DATA_DIR / "frame_index_self.json",
@@ -33,7 +39,8 @@ _SOURCES = [
     },
 ]
 
-OBJECTS_DIR = DATA_DIR / "objects"
+OBJECTS_DIR     = DATA_DIR / "objects"           # nhóm tự detect (YOLOv8m COCO)
+BTC_OBJECTS_DIR = BTC_DIR  / "Objects"           # BTC cấp (Faster R-CNN Open Images)
 
 
 def _is_vietnamese(text: str) -> bool:
@@ -163,14 +170,40 @@ class Retriever:
         return feat.cpu().numpy().astype(np.float32)
 
     # ----------------------------------------------------------
-    # \u0110\u1eccC OBJECTS t\u1eeb file JSON (YOLOv8m output)
+    # ĐỌC OBJECTS — hỗ trợ 2 format: BTC và nhóm (YOLOv8m)
     # ----------------------------------------------------------
-    def _load_objects(self, video_id: str, frame_name: str) -> list:
+    def _load_objects(self, video_id: str, frame_name: str,
+                      n: int = None,
+                      score_threshold: float = 0.25) -> list:
         """
-        \u0110\u1ecdc danh s\u00e1ch class name t\u1eeb objects/<video_id>/<stem>.json.
-        Tr\u1ea3 v\u1ec1 list string, v\u00ed d\u1ee5: ["person", "car", "bicycle"]
+        Đọc objects theo thứ tự ưu tiên:
+          1. BTC format (data/btc/Objects/<video_id>/<n:03d>.json)
+             Field: detection_class_entities + detection_scores
+          2. Nhóm format (data/processed/objects/<video_id>/<stem>.json)
+             Field: [{"class": ..., "score": ...}]
+        Trả về list tên class, ví dụ: ["person", "car", "bicycle"]
         """
-        stem     = Path(frame_name).stem          # "0042"
+        # --- Thử BTC format trước (ưu tiên cao hơn) ---
+        if n is not None:
+            btc_path = BTC_OBJECTS_DIR / video_id / f"{int(n):03d}.json"
+            if btc_path.exists():
+                try:
+                    with open(btc_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    entities = data.get("detection_class_entities", [])
+                    scores   = data.get("detection_scores", [])
+                    # Lọc theo score threshold, trả về tên class
+                    classes = [
+                        ent for ent, sc in zip(entities, scores)
+                        if float(sc) >= score_threshold
+                    ]
+                    if classes:
+                        return classes
+                except Exception:
+                    pass
+
+        # --- Fallback: nhóm tự detect (YOLOv8m COCO) ---
+        stem     = Path(frame_name).stem
         obj_path = OBJECTS_DIR / video_id / f"{stem}.json"
         if not obj_path.exists():
             return []
@@ -245,8 +278,12 @@ class Retriever:
             if timestamp is not None:
                 timestamp = round(float(timestamp), 2)
 
-            # 4. Load objects từ JSON
-            objects = self._load_objects(video_id, frame_name)
+            # 4. Load objects từ JSON (ưu tiên BTC format, fallback YOLOv8m)
+            n_val = info.get("n")  # frame number BTC (1-indexed)
+            objects = self._load_objects(
+                video_id, frame_name,
+                n=int(n_val) if n_val is not None else None
+            )
 
             # 5. Image path cho UI
             img_path = str(self._keyframe_dir / video_id / frame_name)
