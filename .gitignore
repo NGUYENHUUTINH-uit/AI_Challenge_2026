@@ -83,5 +83,13 @@ Thumbs.db
 *.pdf
 L25_*.csv
 L25_*.npy
+L25_*.json
 colab_results/
 
+# Data BTC (nặng, không commit lên Git)
+data/btc/
+data/processed/objects/
+data/processed/keyframes/
+data/processed/clip-features/
+data/processed/*.faiss
+data/processed/*.json
