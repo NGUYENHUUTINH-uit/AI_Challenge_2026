@@ -18,15 +18,9 @@ from pathlib import Path
 SRC_DIR      = Path(__file__).resolve().parent
 PROJECT_ROOT = SRC_DIR.parent.parent
 DATA_DIR     = PROJECT_ROOT / "data" / "processed"
-BTC_DIR      = PROJECT_ROOT / "data" / "btc"
 
-# Ưu tiên BTC index → self → clean
+# \u01afu ti\u00ean source 'self' (output pipeline c\u1ee7a nh\u00f3m), fallback 'clean'
 _SOURCES = [
-    {
-        "faiss":     DATA_DIR / "index_btc.faiss",
-        "map":       DATA_DIR / "frame_index_btc.json",
-        "keyframes": BTC_DIR  / "Keyframes",
-    },
     {
         "faiss":     DATA_DIR / "index_self.faiss",
         "map":       DATA_DIR / "frame_index_self.json",
@@ -39,8 +33,7 @@ _SOURCES = [
     },
 ]
 
-OBJECTS_DIR     = DATA_DIR / "objects"           # nhóm tự detect (YOLOv8m COCO)
-BTC_OBJECTS_DIR = BTC_DIR  / "Objects"           # BTC cấp (Faster R-CNN Open Images)
+OBJECTS_DIR = DATA_DIR / "objects"
 
 
 def _is_vietnamese(text: str) -> bool:
@@ -170,40 +163,14 @@ class Retriever:
         return feat.cpu().numpy().astype(np.float32)
 
     # ----------------------------------------------------------
-    # ĐỌC OBJECTS — hỗ trợ 2 format: BTC và nhóm (YOLOv8m)
+    # \u0110\u1eccC OBJECTS t\u1eeb file JSON (YOLOv8m output)
     # ----------------------------------------------------------
-    def _load_objects(self, video_id: str, frame_name: str,
-                      n: int = None,
-                      score_threshold: float = 0.25) -> list:
+    def _load_objects(self, video_id: str, frame_name: str) -> list:
         """
-        Đọc objects theo thứ tự ưu tiên:
-          1. BTC format (data/btc/Objects/<video_id>/<n:03d>.json)
-             Field: detection_class_entities + detection_scores
-          2. Nhóm format (data/processed/objects/<video_id>/<stem>.json)
-             Field: [{"class": ..., "score": ...}]
-        Trả về list tên class, ví dụ: ["person", "car", "bicycle"]
+        \u0110\u1ecdc danh s\u00e1ch class name t\u1eeb objects/<video_id>/<stem>.json.
+        Tr\u1ea3 v\u1ec1 list string, v\u00ed d\u1ee5: ["person", "car", "bicycle"]
         """
-        # --- Thử BTC format trước (ưu tiên cao hơn) ---
-        if n is not None:
-            btc_path = BTC_OBJECTS_DIR / video_id / f"{int(n):03d}.json"
-            if btc_path.exists():
-                try:
-                    with open(btc_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    entities = data.get("detection_class_entities", [])
-                    scores   = data.get("detection_scores", [])
-                    # Lọc theo score threshold, trả về tên class
-                    classes = [
-                        ent for ent, sc in zip(entities, scores)
-                        if float(sc) >= score_threshold
-                    ]
-                    if classes:
-                        return classes
-                except Exception:
-                    pass
-
-        # --- Fallback: nhóm tự detect (YOLOv8m COCO) ---
-        stem     = Path(frame_name).stem
+        stem     = Path(frame_name).stem          # "0042"
         obj_path = OBJECTS_DIR / video_id / f"{stem}.json"
         if not obj_path.exists():
             return []
@@ -278,12 +245,8 @@ class Retriever:
             if timestamp is not None:
                 timestamp = round(float(timestamp), 2)
 
-            # 4. Load objects từ JSON (ưu tiên BTC format, fallback YOLOv8m)
-            n_val = info.get("n")  # frame number BTC (1-indexed)
-            objects = self._load_objects(
-                video_id, frame_name,
-                n=int(n_val) if n_val is not None else None
-            )
+            # 4. Load objects từ JSON
+            objects = self._load_objects(video_id, frame_name)
 
             # 5. Image path cho UI
             img_path = str(self._keyframe_dir / video_id / frame_name)
@@ -296,7 +259,6 @@ class Retriever:
                 "objects":    objects,
                 "image_path": img_path,
                 "scene_id":   info.get("scene_id"),
-                "frame_id":   int(n_val) if n_val is not None else None,
             })
 
         return results
@@ -308,3 +270,4 @@ if __name__ == "__main__":
     res = r.search_keyframes("a person riding a motorcycle", top_k=5)
     for item in res:
         print(f"{item['video_id']} | {item['filename']} | score={item['score']:.4f} | objects={item['objects']}")
+

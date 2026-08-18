@@ -18,10 +18,10 @@ MIN_SCORE = 0.25
 # PATHS
 # ============================================================
 PROJECT_ROOT  = Path(__file__).resolve().parent.parent.parent
-KEYFRAME_DIR  = PROJECT_ROOT / "data" / "processed" / "keyframes"
-OUTPUT_FAISS  = PROJECT_ROOT / "data" / "processed" / "index.faiss"
-OUTPUT_MAP    = PROJECT_ROOT / "data" / "processed" / "frame_index.json"
-OUTPUT_FEAT   = PROJECT_ROOT / "data" / "processed" / "clip_features.npy"
+KEYFRAME_DIR  = PROJECT_ROOT / "data" / "processed" / "keyframes_clean"   # A5 output
+OUTPUT_FAISS  = PROJECT_ROOT / "data" / "processed" / "index_clean.faiss"  # A5+A3
+OUTPUT_MAP    = PROJECT_ROOT / "data" / "processed" / "frame_index_clean.json"
+OUTPUT_FEAT   = PROJECT_ROOT / "data" / "processed" / "clip_features_clean.npy"
 
 
 # ============================================================
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     index, frame_map = load_everything()
 
     print("\n" + "=" * 50)
-    print("  A3 TEST - Text-to-Frame Search")
+    print("  A3+A5 TEST - Text-to-Frame Search (Clean Dataset)")
     print("=" * 50)
 
     # --------------------------------------------------------

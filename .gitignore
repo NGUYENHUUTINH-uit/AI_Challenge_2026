@@ -16,16 +16,36 @@ dist/
 build/
 
 # =============================================
-# Data & Model files (qua nang cho Git)
-# Chi ignore file nhi phan nang - GIU LAI cau truc thu muc
+# Data & Model files — GIU CAU TRUC, IGNORE NOI DUNG
+# Chi commit .gitkeep de giu thu muc tren Git
 # =============================================
 
-# Keyframes (anh trich xuat tu video - co the len hang GB)
-data/processed/keyframes/
+# Keyframes (anh .jpg - hang GB)
+data/processed/keyframes/*
+!data/processed/keyframes/.gitkeep
+data/processed/keyframes_clean/*
+!data/processed/keyframes_clean/.gitkeep
+
+# Map keyframes (.csv - gitignored chung)
+data/processed/map-keyframes/*
+!data/processed/map-keyframes/.gitkeep
+
+# Media info (.json tu tao)
+data/processed/media-info/*
+!data/processed/media-info/.gitkeep
+
+# Objects detection (.json)
+data/processed/objects/*
+!data/processed/objects/.gitkeep
+
+# Video goc
 data/raw_videos/
 data/sample_videos/
 
-# CLIP features & FAISS index (sinh ra boi indexer.py)
+# DATA BTC CHINH THUC (12GB+, moi nguoi tu tai ve may rieng)
+data/btc/
+
+# CLIP features & FAISS index (sinh ra boi pipeline)
 *.npy
 *.faiss
 
@@ -55,3 +75,13 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# =============================================
+# Temporary & Heavy Files (Không commit)
+# =============================================
+*.zip
+*.pdf
+L25_*.csv
+L25_*.npy
+colab_results/
+
