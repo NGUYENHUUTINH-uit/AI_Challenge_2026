@@ -116,66 +116,117 @@ py -c "import faiss; idx = faiss.read_index('data/processed/index_btc.faiss'); p
 
 ## BƯỚC 3 — Detect Objects Bổ Sung (Colab, ~1-2 phút/video)
 
-> Chỉ cần cho video BTC chưa có objects trong `data/btc/Objects/`.
-> Kết quả lưu vào `data/processed/objects/` làm fallback.
+> **Khi nào cần:** Khi BTC chưa cung cấp objects cho một số video trong `data/btc/Objects/`.
+> Kết quả detect lưu vào `data/processed/objects/` làm **fallback** — retriever tự ưu tiên
+> BTC objects trước, chỉ dùng fallback khi không có.
 
-### 3.1 Chạy trên Colab
+> **Tình trạng:** Nhiều video thiếu objects (rải rác L27-L30), tổng ~30k keyframes.
+> Vì dữ liệu lớn (~6 GB anh), **nen va detect tung lesson** de tranh timeout Colab.
+
+### 3.0 Kiểm tra video nào đang thiếu objects (Local)
+
+```powershell
+python -c "
+from pathlib import Path
+btc_kf  = Path('data/btc/Keyframes')
+btc_obj = Path('data/btc/Objects')
+kf  = set(v.name for v in btc_kf.iterdir()  if v.is_dir())
+obj = set(v.name for v in btc_obj.iterdir() if v.is_dir())
+missing = sorted(kf - obj)
+print(f'Thieu objects: {len(missing)} videos')
+for v in missing: print(' ', v)
+"
+```
+
+### 3.1 Nén keyframes cần detect theo lesson (Local — PowerShell)
+
+> Upload file zip lên `MyDrive/AIC2026/` trên Google Drive.
+
+```powershell
+# Thay <LXX> bang lesson can detect, vi du: L27, L28, L29, L30
+Compress-Archive -Path "data\btc\Keyframes\<LXX>_*" -DestinationPath "keyframes_<LXX>.zip" -Force
+```
+
+### 3.2 Chạy trên Colab
+
+> **Cell 1 chạy 1 lần.** Sau đó mỗi lesson: đổi `LESSON` ở Cell 2 → chạy Cell 2→3→4→5 → lặp.
 
 ```python
-# Cell 1: Setup
+# Cell 1: Setup — chay 1 lan duy nhat
 from google.colab import drive
 drive.mount('/content/drive')
-%cd /content/AI_Challenge_2026
-!pip install ultralytics -q
+
+!git clone https://github.com/YOUR_USERNAME/AI_Challenge_2026.git /content/AIC2026
+
+%cd /content/AIC2026
+import os
+os.makedirs('data/btc/Keyframes', exist_ok=True)
+os.makedirs('data/processed/objects', exist_ok=True)
+!pip install ultralytics tqdm pillow -q
+print("OK Setup xong!")
 ```
 
 ```python
-# Cell 2: Copy data btc từ Drive lên Colab
-import shutil
-from pathlib import Path
-shutil.copytree(
-    "/content/drive/MyDrive/AIC2026/btc",
-    "/content/AI_Challenge_2026/data/btc",
-    dirs_exist_ok=True
-)
-print("✅ Copy xong")
+# Cell 2: Giai nen keyframes — DOI LESSON MOI LAN
+LESSON = "L30"   # L27 / L28 / L29 / L30 / ...
+
+import zipfile, os
+with zipfile.ZipFile(f"/content/drive/MyDrive/AIC2026/keyframes_{LESSON}.zip") as z:
+    z.extractall("data/btc/Keyframes")
+videos = [v for v in os.listdir("data/btc/Keyframes") if v.startswith(LESSON)]
+print(f"OK Giai nen xong: {len(videos)} videos")
 ```
 
 ```python
-# Cell 3: Detect objects trên keyframe BTC
-# --source btc → đọc từ data/btc/Keyframes/
-# Output → data/processed/objects/ (fallback khi BTC chưa có)
+# Cell 3: Detect objects
+# --source btc -> doc tu data/btc/Keyframes/
+# Output -> data/processed/objects/<video_id>/*.json
 !python -m src.indexing.detect_objects --source btc --model yolo --score-threshold 0.3
 ```
 
 ```python
-# Cell 4: Nén và lưu về Drive
-import shutil
-shutil.make_archive("/content/objects_btc", "zip",
-                    "/content/AI_Challenge_2026/data/processed", "objects")
-shutil.copy("/content/objects_btc.zip",
-            "/content/drive/MyDrive/AIC2026/objects_btc.zip")
-print("✅ Lưu objects_btc.zip lên Drive xong!")
+# Cell 4: Kiem tra nhanh
+from pathlib import Path
+obj_dir = Path("data/processed/objects")
+done  = [v.name for v in obj_dir.iterdir() if v.is_dir()]
+total = sum(len(list(v.iterdir())) for v in obj_dir.iterdir() if v.is_dir())
+print(f"OK {len(done)} videos | {total} file JSON")
 ```
 
-### 3.2 Giải nén về máy Local
+```python
+# Cell 5: Nen ket qua -> luu Drive -> don dep de chay lesson tiep
+import shutil, os
+
+shutil.make_archive(f"/content/objects_{LESSON}", "zip", "data/processed", "objects")
+shutil.copy(f"/content/objects_{LESSON}.zip",
+            f"/content/drive/MyDrive/AIC2026/objects_{LESSON}.zip")
+print(f"OK Luu objects_{LESSON}.zip len Drive xong!")
+
+shutil.rmtree("data/btc/Keyframes", ignore_errors=True)
+shutil.rmtree("data/processed/objects", ignore_errors=True)
+os.makedirs("data/btc/Keyframes", exist_ok=True)
+os.makedirs("data/processed/objects", exist_ok=True)
+print("-> Doi LESSON o Cell 2 va chay lai tu Cell 2")
+```
+
+### 3.3 Giải nén kết quả về Local (sau mỗi lesson)
 
 ```powershell
-Expand-Archive -Path objects_btc.zip -DestinationPath data\processed\ -Force
+# Thay <LXX> bang lesson vua detect xong
+Expand-Archive -Path "objects_<LXX>.zip" -DestinationPath "data\processed\" -Force
 ```
 
 **Kết quả cuối trong `data/processed/`:**
 ```
 data/processed/
-├── index_btc.faiss           ← FAISS index
-├── frame_index_btc.json      ← frame map
+├── index_btc.faiss           <- FAISS index
+├── frame_index_btc.json      <- frame map
 └── objects/
-    ├── L25_V001/
-    │   ├── 0000.json         ← YOLOv8m format (fallback)
+    ├── <LXX>_V001/
+    │   ├── 0000.json         <- YOLOv8m format (fallback)
     │   └── ...
-    └── L25_V015/
+    └── <LXX>_Vxxx/
 ```
-
 ---
 
 ## BƯỚC 4 — Chạy Server và Test UI
