@@ -168,6 +168,39 @@
             <!-- JavaScript Inject -->
         </div>
 
+        <!-- CSV Export Panel -->
+        <div id="csvPanel" class="hidden fixed bottom-0 right-0 z-50 transition-all duration-500" style="left: 420px;">
+            <div class="mx-10 mb-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_-8px_40px_rgba(0,0,0,0.5)]">
+                <!-- Header CSV Panel -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-wide">CSV Output — KIS Format</p>
+                            <p class="text-[10px] text-slate-400 font-mono">video_id, frame_id &nbsp;·&nbsp; <span id="csvLineCount" class="text-emerald-500 font-bold">0</span> dòng &nbsp;·&nbsp; Có thể sửa trực tiếp trước khi copy</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="copyAllBtn" onclick="copyCsv()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold tracking-widest transition-all hover:scale-105 shadow-md shadow-emerald-500/30">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            COPY ALL
+                        </button>
+                        <button onclick="toggleCsvPanel()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Textarea CSV -->
+                <textarea id="csvOutput"
+                    class="w-full bg-transparent px-6 py-4 font-mono text-xs text-emerald-700 dark:text-emerald-300 resize-none focus:outline-none placeholder-slate-400"
+                    rows="6"
+                    placeholder="Kết quả KIS sẽ hiện ở đây sau khi search..."
+                    spellcheck="false"></textarea>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -358,6 +391,8 @@
                 // Map kết quả API sang định dạng UI render
                 const mappedResults = data.results.map(r => ({
                     id: `${r.video_id} / ${r.filename}`,
+                    video_id: r.video_id,
+                    frame_id: r.frame_id ?? 0,         // ← Frame ID số nguyên (thể lệ)
                     time: r.timestamp || 0,
                     score: Math.round(r.score * 100),
                     objects: r.objects || [],
@@ -365,6 +400,8 @@
                 }));
 
                 renderResults(mappedResults);
+                renderCsv(mappedResults);              // ← Cập nhật CSV panel
+                showCsvPanel();                        // ← Hiện panel lên
             } catch (err) {
                 console.error("Lỗi truy vấn API:", err);
                 alert("❌ Không thể kết nối với Backend API!\n\nHãy đảm bảo bạn đã bật server bằng lệnh:\n  uvicorn src.backend.api:app --reload --port 8000\n\nChi tiết lỗi: " + err.message);
@@ -380,6 +417,52 @@
                 e.preventDefault();
                 performSearch();
             }
+        });
+
+        // --- CSV Panel Logic ---
+        let _csvPanelOpen = false;
+
+        function renderCsv(data) {
+            const lines = data.map(item => `${item.video_id},${item.frame_id}`);
+            document.getElementById('csvOutput').value = lines.join('\n');
+            document.getElementById('csvLineCount').textContent = lines.length;
+        }
+
+        function showCsvPanel() {
+            const panel = document.getElementById('csvPanel');
+            panel.classList.remove('hidden');
+            _csvPanelOpen = true;
+        }
+
+        function toggleCsvPanel() {
+            const panel = document.getElementById('csvPanel');
+            const textarea = document.getElementById('csvOutput');
+            if (_csvPanelOpen) {
+                textarea.style.display = 'none';
+                _csvPanelOpen = false;
+            } else {
+                textarea.style.display = 'block';
+                _csvPanelOpen = true;
+            }
+        }
+
+        function copyCsv() {
+            const txt = document.getElementById('csvOutput').value;
+            if (!txt.trim()) return;
+            navigator.clipboard.writeText(txt).then(() => {
+                const btn = document.getElementById('copyAllBtn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> COPIED!';
+                btn.classList.replace('bg-emerald-500', 'bg-teal-500');
+                setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('bg-teal-500', 'bg-emerald-500'); }, 1800);
+            });
+        }
+
+        // Sync left của CSV panel theo resizer
+        const _origMouseMove = window.onmousemove;
+        window.addEventListener('mousemove', () => {
+            const lw = leftPanel.style.width;
+            if (lw) document.getElementById('csvPanel').style.left = lw;
         });
 
         // Initial empty state

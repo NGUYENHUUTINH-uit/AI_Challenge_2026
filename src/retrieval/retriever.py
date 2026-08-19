@@ -271,12 +271,22 @@ class Retriever:
             )
             frame_name = Path(filename).name    # "0042.jpg"
 
-            # Lấy timestamp: ưu tiên 'timestamp', fallback 'pts_time'
+            # Lấy timestamp (giây float): ưu tiên 'timestamp', fallback 'pts_time'
             timestamp = info.get("timestamp")
             if timestamp is None:
                 timestamp = info.get("pts_time")
             if timestamp is not None:
                 timestamp = round(float(timestamp), 2)
+
+            # Frame ID theo thể lệ: số nguyên tuyệt đối
+            # Ưu tiên: frame_id → frame_idx → n-1 (n là 1-indexed)
+            frame_id = info.get("frame_id")
+            if frame_id is None:
+                frame_id = info.get("frame_idx")
+            if frame_id is None:
+                n_raw = info.get("n")
+                frame_id = int(n_raw) - 1 if n_raw is not None else 0
+            frame_id = int(frame_id)
 
             # 4. Load objects từ JSON (ưu tiên BTC format, fallback YOLOv8m)
             n_val = info.get("n")  # frame number BTC (1-indexed)
@@ -292,6 +302,7 @@ class Retriever:
                 "video_id":   video_id,
                 "filename":   frame_name,
                 "timestamp":  timestamp,
+                "frame_id":   frame_id,      # ← số nguyên, dùng cho CSV nộp bài
                 "score":      round(float(score), 4),
                 "objects":    objects,
                 "image_path": img_path,

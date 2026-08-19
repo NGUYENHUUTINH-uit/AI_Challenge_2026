@@ -116,8 +116,10 @@ async def serve_keyframe(video_id: str, filename: str):
     # Thu tu cac thu muc keyframe theo do uu tien
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     DATA_DIR     = PROJECT_ROOT / "data" / "processed"
+    BTC_DIR      = PROJECT_ROOT / "data" / "btc"
 
     candidates = [
+        BTC_DIR  / "Keyframes"       / video_id / filename,   # BTC data (uu tien)
         DATA_DIR / "keyframes"       / video_id / filename,
         DATA_DIR / "keyframes_clean" / video_id / filename,
     ]
@@ -129,4 +131,4 @@ async def serve_keyframe(video_id: str, filename: str):
     raise HTTPException(
         status_code=404,
         detail=f"Khong tim thay anh: {video_id}/{filename}"
-    )
+    )
