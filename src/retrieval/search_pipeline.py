@@ -108,6 +108,11 @@ CHỈ trả về JSON array {max_variants} chuỗi, không thêm text nào khác
 
 def extract_query_objects(query_text: str) -> list[str]:
     """Rule-based, MIỄN PHÍ — trích object nhắc tới trong câu query."""
+    if isinstance(query_text, list):
+        query_text = " ".join([str(q) for q in query_text])
+    
+    if not isinstance(query_text, str):
+        return []
     query_lower = query_text.lower()
     keyword_map = {
         "người": "person", "đàn ông": "man", "phụ nữ": "woman",
@@ -295,7 +300,7 @@ class SearchPipeline:
             raw = self._raw_search(eq, top_k_event)
             candidates = [r for r in raw if r["video_id"] == video_id]
             for c in candidates:
-                c["_ts"] = c.get("timestamp") or float((c.get("filename")) or 0)
+                c["_ts"] = c.get("timestamp") or float((c.get("frame_id")) or 0)
             if last_ts is not None:
                 constrained = [c for c in candidates if c["_ts"] > last_ts]
                 if constrained:
@@ -337,20 +342,55 @@ def to_trake_json(trake_result: dict) -> Optional[dict]:
 
 
 if __name__ == "__main__":
-    # Test với MOCK Retriever khớp đúng schema thật của A (không cần
-    # FAISS/CLIP thật) — xem test_search_pipeline.py để test đầy đủ hơn.
-    class MockRetriever:
-        def search_keyframes(self, query_text=None, query_image=None, top_k=20):
-            import random
-            return [{
-                "video_id": f"L01_V{i%3:03d}", "filename": f"{i:04d}.jpg",
-                "timestamp": float(i), "score": round(random.uniform(0.3, 0.95), 3),
-                "objects": ["person", "bicycle"] if i % 2 == 0 else ["tree"],
-                "image_path": f"data/processed/keyframes/L01_V{i%3:03d}/{i:04d}.jpg",
-                "scene_id": i // 5,
-            } for i in range(top_k)]
+    import time
+    from .retriever import Retriever 
 
-    pipeline = SearchPipeline(retriever=MockRetriever())
-    segments = pipeline.search_kis("người đi xe đạp", top_k=20)
-    for s in segments[:3]:
-        print(s)
+    print("⏳ Đang khởi tạo hệ thống và nạp dữ liệu thật...")
+    real_retriever = Retriever()
+    real_retriever._ensure_loaded()
+
+    pipeline = SearchPipeline(
+        retriever=real_retriever,
+        config=PipelineConfig(base_threshold=0.20, object_alpha=0.15)
+    )
+
+    print("\n" + "="*50)
+    print("1️⃣ TEST PHÉP KIS (Known-Item Search)")
+    print("="*50)
+    query_kis = "người đàn ông đi xe máy"
+    t0 = time.time()
+    kis_results = pipeline.search_kis(query_kis, top_k=50)
+    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s | Tìm thấy: {len(kis_results)} dải sự kiện")
+    if kis_results:
+        print(f"   Ví dụ top 1: Video {kis_results[0]['video_id']} ({kis_results[0]['start']}s -> {kis_results[0]['end']}s)")
+
+    print("\n" + "="*50)
+    print("\n" + "="*50)
+    print("2️⃣ TEST PHÉP TRAKE (Temporal Activity)")
+    print("="*50)
+    # Ví dụ tìm chuỗi hành động tuần tự: bước vào phòng rồi ngồi xuống
+    query_trake_steps = ["người bước vào phòng", "người ngồi xuống ghế"]
+    t0 = time.time()
+    trake_results = pipeline.search_trake(query_trake_steps)
+    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
+    
+    # Sửa tại đây: In đúng cấu trúc dictionary mà search_trake trả về
+    if trake_results and trake_results.get("video_id"):
+        print(f"   Ví dụ top 1: Video {trake_results.get('video_id')} theo đúng trật tự thời gian")
+        print(f"   Chi tiết các sự kiện: {trake_results.get('events')}")
+    else:
+        print("   Không tìm thấy chuỗi sự kiện phù hợp.")
+
+    print("\n" + "="*50)
+    print("3️⃣ TEST PHÉP Q&A (Question Answering)")
+    print("="*50)
+    query_qa = "ô tô màu đỏ"
+    question_qa = "có bao nhiêu chiếc ô tô màu đỏ trong video"
+    
+    t0 = time.time()
+    # Sửa tại đây: Truyền đủ 2 tham số query_text và question
+    qa_result = pipeline.search_qa(query_text=query_qa, question=question_qa)
+    
+    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
+    print(f"   Kết quả trả về JSON chuẩn bị nộp: {qa_result}")
+    print("="*50)
