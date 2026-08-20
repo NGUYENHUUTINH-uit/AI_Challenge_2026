@@ -140,10 +140,22 @@ for v in missing: print(' ', v)
 
 ### 3.1 Nén keyframes cần detect theo lesson (Local — PowerShell)
 
-> Upload file zip lên `MyDrive/AIC2026/` trên Google Drive.
+> File zip sau khi nén nằm ngay trong thư mục project.
+> **Upload thủ công lên Google Drive** vào đúng thư mục sau:
+> ```
+> Google Drive của bạn
+> └── My Drive/
+>     └── AIC2026/              ← tạo thư mục này nếu chưa có
+>         ├── keyframes_L27.zip ← upload vào đây
+>         ├── keyframes_L28.zip
+>         ├── keyframes_L29.zip
+>         └── keyframes_L30.zip
+> ```
+> Cách upload: Mở [drive.google.com](https://drive.google.com) → vào thư mục `AIC2026` → kéo thả file zip vào.
 
 ```powershell
 # Thay <LXX> bang lesson can detect, vi du: L27, L28, L29, L30
+# File zip se nam trong thu muc project sau khi chay xong
 Compress-Archive -Path "data\btc\Keyframes\<LXX>_*" -DestinationPath "keyframes_<LXX>.zip" -Force
 ```
 
