@@ -187,7 +187,7 @@ GITHUB_TOKEN = userdata.get('GITHUB_TOKEN')
 print(f"Token OK: {len(GITHUB_TOKEN)} ky tu")
 
 REPO   = "NGUYENHUUTINH-uit/AI_Challenge_2026"
-BRANCH = "main"   # <- thay ten nhanh neu khac
+BRANCH = "feature-A7"   # <- nhánh đang chứa code tối ưu mới nhất
 
 # Clone code tu GitHub
 %cd /content
