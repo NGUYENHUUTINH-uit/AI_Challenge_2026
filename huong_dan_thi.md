@@ -182,7 +182,8 @@ os.makedirs('/content/AIC2026', exist_ok=True)
 with zipfile.ZipFile('/content/drive/MyDrive/AIC2026/src_code.zip') as z:
     z.extractall('/content/AIC2026')
 
-os.chdir('/content/AIC2026')
+%cd /content/AIC2026
+
 os.makedirs('data/btc/Keyframes', exist_ok=True)
 os.makedirs('data/processed/objects', exist_ok=True)
 !pip install ultralytics tqdm pillow -q
