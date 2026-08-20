@@ -16,6 +16,10 @@ THẤP, cần A xác nhận đúng quy tắc đặt tên trước khi dùng đ�
 """
 from __future__ import annotations
 
+from dotenv import load_dotenv
+load_dotenv()
+from ai_vqa_service import gemini_vqa_inference
+
 import json
 import time
 import concurrent.futures
@@ -115,10 +119,31 @@ def extract_query_objects(query_text: str) -> list[str]:
         return []
     query_lower = query_text.lower()
     keyword_map = {
-        "người": "person", "đàn ông": "man", "phụ nữ": "woman",
-        "xe đạp": "bicycle", "xe hơi": "car", "ô tô": "car",
-        "chó": "dog", "mèo": "cat", "cây": "tree",
-        "xe máy": "motorcycle", "bàn": "table", "ghế": "chair",
+        # 1. Chủ đề Con người & Trang phục
+        "người": "person", "đàn ông": "man", "phụ nữ": "woman", 
+        "trẻ em": "child", "em bé": "baby", "cảnh sát": "police",
+        "áo": "shirt", "quần": "pants", "mũ": "hat", 
+        "mũ bảo hiểm": "helmet", "giày": "shoe", "kính": "glasses",
+
+        # 2. Chủ đề Phương tiện giao thông & Di chuyển
+        "xe đạp": "bicycle", "xe máy": "motorcycle", "xe hơi": "car", 
+        "ô tô": "car", "xe buýt": "bus", "xe tải": "truck", 
+        "taxi": "taxi", "thuyền": "boat", "máy bay": "airplane",
+
+        # 3. Chủ đề Động vật & Thiên nhiên
+        "chó": "dog", "mèo": "cat", "chim": "bird", "cá": "fish",
+        "cây": "tree", "hoa": "flower", "núi": "mountain", 
+        "sông": "river", "biển": "sea", "đường": "road",
+
+        # 4. Chủ đề Đồ vật & Thiết bị điện tử
+        "điện thoại": "cell phone", "máy tính": "laptop", "tivi": "tv",
+        "bàn": "table", "ghế": "chair", "ghế sofa": "couch",
+        "cặp sách": "backpack", "túi xách": "handbag", "dù": "umbrella",
+
+        # 5. Chủ đề Màu sắc hỗ trợ (Color Attributes)
+        "đỏ": "red", "xanh": "blue", "vàng": "yellow", 
+        "đen": "black", "trắng": "white", "cam": "orange",
+        "tím": "purple", "hồng": "pink", "xám": "gray", "nâu": "brown"
     }
     return list({en for vi, en in keyword_map.items() if vi in query_lower})
 
@@ -287,32 +312,58 @@ class SearchPipeline:
         top_k_video = top_k_video or self.config.trake_top_k_video
         top_k_event = top_k_event or self.config.trake_top_k_event
 
-        segments = self.search_kis(query_text, top_k_video)
+        # 1. Phân rã chuỗi hành động từ input (tách qua dấu phẩy)
+        decompose = self.event_decomposer or (lambda q: [s.strip() for s in q.split(",") if s.strip()])
+        event_queries = decompose(query_text)
+        
+        if not event_queries:
+            return {"video_id": None, "events": []}
+
+        # 2. Bước đầu tiên: Khoanh vùng video ứng viên sáng giá nhất
+        segments = self.search_kis(event_queries[0], top_k_video)
         if not segments:
             return {"video_id": None, "events": []}
+        
+        # Lấy video_id có điểm peak cao nhất từ bước 1 làm trọng tâm
         video_id = segments[0]["video_id"]
 
-        decompose = self.event_decomposer or (lambda q: [q])
-        event_queries = decompose(query_text)
-
-        events, last_ts = [], None
+        # 3. Duyệt tuần tự qua các sự kiện tiếp theo với ràng buộc thời gian (Temporal Constraint)
+        events = []
+        last_ts = None
+        
         for eq in event_queries:
+            # Lấy raw search cho từng bước hành động nhỏ
             raw = self._raw_search(eq, top_k_event)
+            
+            # CHỈ LỌC các ứng viên thuộc ĐÚNG video_id đã chọn
             candidates = [r for r in raw if r["video_id"] == video_id]
+            
+            # Chuẩn hóa timestamp cho từng candidate
             for c in candidates:
-                c["_ts"] = c.get("timestamp") or float((c.get("frame_id")) or 0)
+                ts = c.get("timestamp")
+                fid = c.get("frame_id")
+                c["_ts"] = float(ts) if ts is not None else (float(fid) if fid is not None else 0.0)
+            
+            # RÀNG BUỘC THỜI GIAN: Nếu đã có mốc thời gian trước đó, chỉ lấy frame xảy ra SAU mốc đó
             if last_ts is not None:
-                constrained = [c for c in candidates if c["_ts"] > last_ts]
+                constrained = [c for c in candidates if c["_ts"] >= last_ts]
                 if constrained:
                     candidates = constrained
+            
+            # Nếu không tìm thấy ứng viên thỏa mãn, ghi nhận sự kiện trống nhưng vẫn tiếp tục chạy
             if not candidates:
                 events.append({"event": eq, "frame_id": None, "score": None})
                 continue
+            
+            # Chọn khung hình có score cao nhất thỏa mãn điều kiện
             best = max(candidates, key=lambda c: c["score"])
             events.append({
-                "event": eq, "frame_id": best.get("filename"),
+                "event": eq, 
+                "frame_id": best.get("filename"), # Hoặc frame_id chuẩn
                 "score": best["score"],
             })
+            
+            # Cập nhật mốc thời gian hiện tại làm mốc chặn cho sự kiện tiếp theo
             last_ts = best["_ts"]
 
         return {"video_id": video_id, "events": events}
@@ -351,46 +402,58 @@ if __name__ == "__main__":
 
     pipeline = SearchPipeline(
         retriever=real_retriever,
+        answer_fn=gemini_vqa_inference,
         config=PipelineConfig(base_threshold=0.20, object_alpha=0.15)
     )
 
-    print("\n" + "="*50)
-    print("1️⃣ TEST PHÉP KIS (Known-Item Search)")
-    print("="*50)
-    query_kis = "người đàn ông đi xe máy"
-    t0 = time.time()
-    kis_results = pipeline.search_kis(query_kis, top_k=50)
-    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s | Tìm thấy: {len(kis_results)} dải sự kiện")
-    if kis_results:
-        print(f"   Ví dụ top 1: Video {kis_results[0]['video_id']} ({kis_results[0]['start']}s -> {kis_results[0]['end']}s)")
-
-    print("\n" + "="*50)
-    print("\n" + "="*50)
-    print("2️⃣ TEST PHÉP TRAKE (Temporal Activity)")
-    print("="*50)
-    # Ví dụ tìm chuỗi hành động tuần tự: bước vào phòng rồi ngồi xuống
-    query_trake_steps = ["người bước vào phòng", "người ngồi xuống ghế"]
-    t0 = time.time()
-    trake_results = pipeline.search_trake(query_trake_steps)
-    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
-    
-    # Sửa tại đây: In đúng cấu trúc dictionary mà search_trake trả về
-    if trake_results and trake_results.get("video_id"):
-        print(f"   Ví dụ top 1: Video {trake_results.get('video_id')} theo đúng trật tự thời gian")
-        print(f"   Chi tiết các sự kiện: {trake_results.get('events')}")
-    else:
-        print("   Không tìm thấy chuỗi sự kiện phù hợp.")
-
-    print("\n" + "="*50)
-    print("3️⃣ TEST PHÉP Q&A (Question Answering)")
-    print("="*50)
-    query_qa = "ô tô màu đỏ"
-    question_qa = "có bao nhiêu chiếc ô tô màu đỏ trong video"
-    
-    t0 = time.time()
-    # Sửa tại đây: Truyền đủ 2 tham số query_text và question
-    qa_result = pipeline.search_qa(query_text=query_qa, question=question_qa)
-    
-    print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
-    print(f"   Kết quả trả về JSON chuẩn bị nộp: {qa_result}")
-    print("="*50)
+    while True:
+        print("\n" + "="*50)
+        print("CHỌN PHÉP KIỂM THỬ TƯƠNG TÁC:")
+        print("1. KIS (Known-Item Search)")
+        print("2. TRAKE (Temporal Activity)")
+        print("3. Q&A (Question Answering)")
+        print("0. Thoát")
+        
+        choice = input("👉 Nhập lựa chọn của bạn (0-3): ").strip()
+        
+        if choice == "0":
+            print("Đang thoát chương trình kiểm thử. Tạm biệt!")
+            break
+            
+        elif choice == "1":
+            q_vi = input("Nhập câu truy vấn KIS (tiếng Việt): ").strip()
+            if not q_vi:
+                continue
+            t0 = time.time()
+            kis_results = pipeline.search_kis(q_vi, top_k=50)
+            print(f"⏱️ Thời gian: {time.time() - t0:.2f}s | Tìm thấy: {len(kis_results)} dải sự kiện")
+            for i, r in enumerate(kis_results[:3]):
+                print(f"   Top {i+1}: Video {r.get('video_id')} ({r.get('start')}s -> {r.get('end')}s) | Peak Score: {r.get('peak_score'):.4f}")
+                print(f"      Ảnh minh họa: {r.get('image_path')}")
+                
+        elif choice == "2":
+            steps_input = input("Nhập các bước TRAKE (cách nhau bằng dấu phẩy ','): ").strip()
+            if not steps_input:
+                continue
+            t0 = time.time()
+            trake_results = pipeline.search_trake(steps_input)
+            print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
+            
+            if trake_results and trake_results.get("video_id"):
+                print(f"   Ví dụ top 1: Video {trake_results.get('video_id')} theo đúng trật tự thời gian")
+                print(f"   Chi tiết các sự kiện: {trake_results.get('events')}")
+            else:
+                print("   Không tìm thấy chuỗi sự kiện phù hợp.")
+                
+        elif choice == "3":
+            q_vi = input("Nhập truy vấn Q&A (tiếng Việt): ").strip()
+            question_qa = input("Nhập câu hỏi chi tiết: ").strip()
+            if not q_vi or not question_qa:
+                continue
+            
+            t0 = time.time()
+            qa_result = pipeline.search_qa(query_text=q_vi, question=question_qa)
+            print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
+            print(f"   Kết quả trả về JSON chuẩn bị nộp (Top đầu): {qa_result[:2] if isinstance(qa_result, list) else qa_result}")
+        else:
+            print("❌ Lựa chọn không hợp lệ, vui lòng chọn từ 0 đến 3.")
