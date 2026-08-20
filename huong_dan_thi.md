@@ -203,8 +203,14 @@ print(f"OK Giai nen xong: {len(videos)} videos")
 
 ```python
 # Cell 3: Detect objects
-%cd /content/AIC2026
-!python -m src.indexing.detect_objects --source btc --model yolo --score-threshold 0.3
+# Chay file truc tiep (tranh loi module not found)
+import subprocess
+result = subprocess.run(
+    ['python', 'src/indexing/detect_objects.py',
+     '--source', 'btc', '--model', 'yolo', '--score-threshold', '0.3'],
+    cwd='/content/AIC2026'
+)
+print("Done! Exit code:", result.returncode)
 ```
 
 ```python
