@@ -203,8 +203,7 @@ print(f"OK Giai nen xong: {len(videos)} videos")
 
 ```python
 # Cell 3: Detect objects
-# --source btc -> doc tu data/btc/Keyframes/
-# Output -> data/processed/objects/<video_id>/*.json
+%cd /content/AIC2026
 !python -m src.indexing.detect_objects --source btc --model yolo --score-threshold 0.3
 ```
 
