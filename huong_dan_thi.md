@@ -140,27 +140,25 @@ for v in missing: print(' ', v)
 
 ### 3.1 Nén file cần thiết (Local — PowerShell)
 
-> Nén **2 loại file** rồi upload lên Google Drive.
+> Nén keyframes rồi upload lên Google Drive.
 
-**Lần đầu tiên — nén source code (chỉ làm 1 lần):**
+**Mỗi lesson cần detect — nén keyframes (dùng Python để đảm bảo forward slash):**
 ```powershell
-# Dung Python de nen (tranh loi duong dan Windows tren Linux/Colab)
-python -c "import shutil; shutil.make_archive('src_code', 'zip', '.', 'src')"
-```
+# QUAN TRONG: chay lenh nay tu thu muc goc project (noi co thu muc src\ va data\)
+cd d:\AIC_2026\AI_Challenge_2026
 
-**Mỗi lesson cần detect — nén keyframes:**
-```powershell
-# Thay LXX bang lesson can detect, vi du: L27, L28, L29, L30
+# Thay L27 bang lesson can detect
 python -c "
 import zipfile
 from pathlib import Path
-lesson = 'LXX'
+lesson = 'L29'
 kf_dir = Path('data/btc/Keyframes')
 with zipfile.ZipFile(f'keyframes_{lesson}.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
     for vd in kf_dir.iterdir():
         if vd.is_dir() and vd.name.startswith(lesson):
             for img in vd.iterdir():
-                zf.write(img, f'{vd.name}/{img.name}')
+                # Dung forward slash tuong minh, tranh loi backslash tren Linux/Colab
+                zf.write(img, vd.name + '/' + img.name)
 print('Done! keyframes_' + lesson + '.zip')
 "
 ```
@@ -169,7 +167,6 @@ print('Done! keyframes_' + lesson + '.zip')
 > ```
 > My Drive/
 > └── AIC2026/
->     ├── src_code.zip          ← upload 1 lan duy nhat
 >     ├── keyframes_L27.zip     ← upload tung lesson
 >     ├── keyframes_L28.zip
 >     ├── keyframes_L29.zip
@@ -183,18 +180,27 @@ print('Done! keyframes_' + lesson + '.zip')
 
 ```python
 # Cell 1: Setup — chay 1 lan duy nhat
-from google.colab import drive
+# Lay token tu Colab Secrets (an toan, khong lo token)
+from google.colab import userdata, drive
+
+GITHUB_TOKEN = userdata.get('GITHUB_TOKEN')
+print(f"Token OK: {len(GITHUB_TOKEN)} ky tu")
+
+REPO   = "NGUYENHUUTINH-uit/AI_Challenge_2026"
+BRANCH = "main"   # <- thay ten nhanh neu khac
+
+# Clone code tu GitHub
+%cd /content
+!rm -rf AIC2026
+!git clone https://{GITHUB_TOKEN}@github.com/{REPO}.git AIC2026
+%cd AIC2026
+!git checkout {BRANCH}
+!ls src/indexing   # kiem tra code da clone dung
+
+# Mount Drive de truy cap keyframes
 drive.mount('/content/drive')
 
-import zipfile, os
-
-# Giai nen source code tu Drive (khong can git clone)
-os.makedirs('/content/AIC2026', exist_ok=True)
-with zipfile.ZipFile('/content/drive/MyDrive/AIC2026/src_code.zip') as z:
-    z.extractall('/content/AIC2026')
-
-%cd /content/AIC2026
-
+import os
 os.makedirs('data/btc/Keyframes', exist_ok=True)
 os.makedirs('data/processed/objects', exist_ok=True)
 !pip install ultralytics tqdm pillow -q
@@ -203,25 +209,32 @@ print("OK Setup xong!")
 
 ```python
 # Cell 2: Giai nen keyframes — DOI LESSON MOI LAN
-LESSON = "L30"   # L27 / L28 / L29 / L30 / ...
+LESSON = "L27"   # L27 / L28 / L29 / L30 / ...
 
 import zipfile, os
+from pathlib import Path
+
+kf_base = Path("data/btc/Keyframes")
+
 with zipfile.ZipFile(f"/content/drive/MyDrive/AIC2026/keyframes_{LESSON}.zip") as z:
-    z.extractall("data/btc/Keyframes")
-videos = [v for v in os.listdir("data/btc/Keyframes") if v.startswith(LESSON)]
+    for member in z.namelist():
+        # Chuan hoa backslash (Windows ZIP) -> forward slash (Linux)
+        norm = member.replace('\\', '/')
+        out_path = kf_base / norm
+        if norm.endswith('/'):
+            out_path.mkdir(parents=True, exist_ok=True)
+        else:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(z.read(member))
+
+videos = [v for v in os.listdir(kf_base) if (kf_base / v).is_dir() and v.startswith(LESSON)]
 print(f"OK Giai nen xong: {len(videos)} videos")
 ```
 
 ```python
-# Cell 3: Detect objects
-# Chay file truc tiep (tranh loi module not found)
-import subprocess
-result = subprocess.run(
-    ['python', 'src/indexing/detect_objects.py',
-     '--source', 'btc', '--model', 'yolo', '--score-threshold', '0.3'],
-    cwd='/content/AIC2026'
-)
-print("Done! Exit code:", result.returncode)
+# Cell 3: Detect objects (Nạp model 1 lần, hiển thị tiến độ % trực tiếp)
+%cd /content/AIC2026
+!python src/indexing/detect_objects.py --source btc --model yolo --score-threshold 0.3
 ```
 
 ```python

@@ -95,8 +95,8 @@ KF_DIR_BTC  = DATA_DIR  / "btc" / "Keyframes" # data/btc/Keyframes/<video_id>/
 # Output objects
 OBJ_OUTPUT  = PROCESSED / "objects"           # data/processed/objects/<video_id>/
 
-# 🚀 Batch size cho object detection
-DETECT_BATCH_SIZE = 8
+# 🚀 Batch size cho object detection (32-64 tối ưu cho GPU T4/V100/A100)
+DETECT_BATCH_SIZE = 32
 
 # File metadata_clean (output cua preprocess + group_scenes)
 METADATA_CLEAN = PROCESSED / "metadata_clean.json"
@@ -283,23 +283,19 @@ def _detect_coco(image_path, model, device, score_threshold):
     return results_list[0] if results_list else []
 
 
-def _detect_yolo_batch(image_paths: list, model,
+def _detect_yolo_batch(image_paths: list, model, device: str = "cuda",
                        score_threshold: float = 0.3) -> list:
     """
     🚀 YOLOv8m — detect NHIỀU FRAME trong 1 lần gọi (batch inference native).
-    YOLOv8 (Ultralytics) hỗ trợ batch string paths trực tiếp.
-
-    Output JSON format GIONG HET _detect_coco_batch():
-        list[list[dict]]  với dict = {"class": str, "score": float, "box": [x1,y1,x2,y2]}
-
-    Tốc độ: ~80 FPS trên T4 GPU (vs ~10 FPS của Faster R-CNN)
+    Tối ưu chạy FP16 (half precision) trên CUDA giúp tăng tốc 3-5x.
     """
     str_paths = [str(p) for p in image_paths]
     results_all = [[] for _ in range(len(image_paths))]
+    use_half = ("cuda" in str(device)) and torch.cuda.is_available()
 
     try:
-        # YOLOv8 nhận list đường dẫn — tự động batch trên GPU
-        batch_results = model(str_paths, verbose=False)
+        # YOLOv8 nhận list đường dẫn — batch inference trực tiếp trên GPU với FP16
+        batch_results = model(str_paths, device=device, half=use_half, verbose=False)
     except Exception as e:
         print(f"  [WARN] YOLOv8 batch error: {e}")
         return results_all
@@ -516,7 +512,7 @@ def detect_video(video_id: str, model, device: str,
             try:
                 if model_name == "yolo":
                     batch_results = _detect_yolo_batch(
-                        batch_paths, model, score_threshold
+                        batch_paths, model, device=device, score_threshold=score_threshold
                     )
                 else:
                     batch_results = _detect_coco_batch(
@@ -566,6 +562,7 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
                model_name: str = "coco",
                score_threshold: float = 0.3,
                skip_existing: bool = True,
+               batch_size: int = DETECT_BATCH_SIZE,
                rep_only: bool = False):
     """Chay object detection toan bo thu muc keyframe.
 
@@ -589,7 +586,7 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
         return
 
     model_labels = {
-        "yolo":           "YOLOv8m COCO 80 classes (Ultralytics) — 🚀 NHANH NHAT",
+        "yolo":           "YOLOv8m COCO 80 classes (Ultralytics) — 🚀 NHANH NHAT (FP16 Batch)",
         "coco":           "Faster R-CNN COCO 80 classes (torchvision)",
         "openimages":     "OpenImages V4 600 classes (TF Hub) — GIONG HET BTC",
         "grounding-dino": f"Grounding DINO zero-shot ({len(GROUNDING_DINO_CLASSES)} custom classes)",
@@ -598,10 +595,11 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
     mode_label = "REPRESENTATIVE ONLY" if rep_only else "ALL FRAMES"
     print(f"\n{'='*60}")
     print(f"  OBJECT DETECTION — {len(video_dirs)} videos  [{mode_label}]")
-    print(f"  Model  : {model_labels.get(model_name, model_name)}")
-    print(f"  Device : {device.upper()}")
-    print(f"  Nguon  : {keyframe_dir}")
-    print(f"  Output : {output_dir}")
+    print(f"  Model      : {model_labels.get(model_name, model_name)}")
+    print(f"  Device     : {device.upper()}")
+    print(f"  Batch size : {batch_size}")
+    print(f"  Nguon      : {keyframe_dir}")
+    print(f"  Output     : {output_dir}")
     print(f"{'='*60}\n")
 
     total_frames = 0
@@ -617,6 +615,7 @@ def run_detect(keyframe_dir: Path = KF_DIR_SELF,
             output_dir=output_dir,
             score_threshold=score_threshold,
             skip_existing=skip_existing,
+            batch_size=batch_size,
             rep_only_set=rep_only_set,
         )
         print(f"  Done: {n} frames")
@@ -666,6 +665,10 @@ if __name__ == "__main__":
         help="Chi xu ly 1 video cu the (vi du: L21_V001). Mac dinh: tat ca"
     )
     parser.add_argument(
+        "--batch-size", type=int, default=32,
+        help="Batch size cho inference (default: 32, tren GPU T4 khuyen dung 32-64)"
+    )
+    parser.add_argument(
         "--score-threshold", type=float, default=0.3,
         help="Nguong confidence toi thieu (default: 0.3)"
     )
@@ -697,5 +700,6 @@ if __name__ == "__main__":
         model_name=args.model,
         score_threshold=args.score_threshold,
         skip_existing=not args.no_skip,
+        batch_size=args.batch_size,
         rep_only=args.rep_only,
     )
