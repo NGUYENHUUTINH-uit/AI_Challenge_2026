@@ -144,14 +144,25 @@ for v in missing: print(' ', v)
 
 **Lần đầu tiên — nén source code (chỉ làm 1 lần):**
 ```powershell
-# Nén thu muc src (chi lam 1 lan duy nhat)
-Compress-Archive -Path "src" -DestinationPath "src_code.zip" -Force
+# Dung Python de nen (tranh loi duong dan Windows tren Linux/Colab)
+python -c "import shutil; shutil.make_archive('src_code', 'zip', '.', 'src')"
 ```
 
 **Mỗi lesson cần detect — nén keyframes:**
 ```powershell
-# Thay <LXX> bang lesson can detect, vi du: L27, L28, L29, L30
-Compress-Archive -Path "data\btc\Keyframes\<LXX>_*" -DestinationPath "keyframes_<LXX>.zip" -Force
+# Thay LXX bang lesson can detect, vi du: L27, L28, L29, L30
+python -c "
+import zipfile
+from pathlib import Path
+lesson = 'LXX'
+kf_dir = Path('data/btc/Keyframes')
+with zipfile.ZipFile(f'keyframes_{lesson}.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+    for vd in kf_dir.iterdir():
+        if vd.is_dir() and vd.name.startswith(lesson):
+            for img in vd.iterdir():
+                zf.write(img, f'{vd.name}/{img.name}')
+print('Done! keyframes_' + lesson + '.zip')
+"
 ```
 
 > **Upload lên Google Drive** vào đúng thư mục sau (tạo nếu chưa có):
