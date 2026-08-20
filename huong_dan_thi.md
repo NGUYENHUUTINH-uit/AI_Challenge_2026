@@ -138,26 +138,33 @@ for v in missing: print(' ', v)
 "
 ```
 
-### 3.1 Nén keyframes cần detect theo lesson (Local — PowerShell)
+### 3.1 Nén file cần thiết (Local — PowerShell)
 
-> File zip sau khi nén nằm ngay trong thư mục project.
-> **Upload thủ công lên Google Drive** vào đúng thư mục sau:
-> ```
-> Google Drive của bạn
-> └── My Drive/
->     └── AIC2026/              ← tạo thư mục này nếu chưa có
->         ├── keyframes_L27.zip ← upload vào đây
->         ├── keyframes_L28.zip
->         ├── keyframes_L29.zip
->         └── keyframes_L30.zip
-> ```
-> Cách upload: Mở [drive.google.com](https://drive.google.com) → vào thư mục `AIC2026` → kéo thả file zip vào.
+> Nén **2 loại file** rồi upload lên Google Drive.
 
+**Lần đầu tiên — nén source code (chỉ làm 1 lần):**
+```powershell
+# Nén thu muc src (chi lam 1 lan duy nhat)
+Compress-Archive -Path "src" -DestinationPath "src_code.zip" -Force
+```
+
+**Mỗi lesson cần detect — nén keyframes:**
 ```powershell
 # Thay <LXX> bang lesson can detect, vi du: L27, L28, L29, L30
-# File zip se nam trong thu muc project sau khi chay xong
 Compress-Archive -Path "data\btc\Keyframes\<LXX>_*" -DestinationPath "keyframes_<LXX>.zip" -Force
 ```
+
+> **Upload lên Google Drive** vào đúng thư mục sau (tạo nếu chưa có):
+> ```
+> My Drive/
+> └── AIC2026/
+>     ├── src_code.zip          ← upload 1 lan duy nhat
+>     ├── keyframes_L27.zip     ← upload tung lesson
+>     ├── keyframes_L28.zip
+>     ├── keyframes_L29.zip
+>     └── keyframes_L30.zip
+> ```
+> Cách upload: [drive.google.com](https://drive.google.com) → thư mục `AIC2026` → kéo thả file vào.
 
 ### 3.2 Chạy trên Colab
 
@@ -168,10 +175,14 @@ Compress-Archive -Path "data\btc\Keyframes\<LXX>_*" -DestinationPath "keyframes_
 from google.colab import drive
 drive.mount('/content/drive')
 
-!git clone https://github.com/YOUR_USERNAME/AI_Challenge_2026.git /content/AIC2026
+import zipfile, os
 
-%cd /content/AIC2026
-import os
+# Giai nen source code tu Drive (khong can git clone)
+os.makedirs('/content/AIC2026', exist_ok=True)
+with zipfile.ZipFile('/content/drive/MyDrive/AIC2026/src_code.zip') as z:
+    z.extractall('/content/AIC2026')
+
+os.chdir('/content/AIC2026')
 os.makedirs('data/btc/Keyframes', exist_ok=True)
 os.makedirs('data/processed/objects', exist_ok=True)
 !pip install ultralytics tqdm pillow -q
