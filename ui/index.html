@@ -220,6 +220,15 @@
                 </div>
             </div>
 
+            <!-- Video Filter Option (Drill-down) -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">🎯 Lọc Video ID (Tập trung):</span>
+                    <button type="button" onclick="document.getElementById('videoFilterInput').value='';" class="text-[10px] text-slate-400 hover:text-rose-400 font-mono">Xóa lọc</button>
+                </div>
+                <input id="videoFilterInput" type="text" placeholder="VD: L22_V010 (để trống nếu tìm tất cả)" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 focus:ring-1 focus:ring-indigo-500/50 outline-none uppercase">
+            </div>
+
             <!-- Top-K Selector & Options -->
             <div class="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Số dòng nộp tối đa:</span>
@@ -318,6 +327,39 @@
                             Copy toàn bộ
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Timeline / Drill-down Modal -->
+    <div id="videoTimelineModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onclick="closeVideoTimelineModal()"></div>
+        <div class="relative bg-white dark:bg-slate-900 w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col mx-4 z-10 animate-fade-in-up">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/80">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-mono font-black px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md">🎞️ TIMELINE</span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Video: <span id="timelineModalVideoId" class="text-indigo-600 dark:text-indigo-400 font-mono"></span>
+                        </h3>
+                        <p class="text-xs text-slate-400 font-mono">Tổng cộng <b id="timelineModalCount" class="text-amber-400">0</b> keyframes theo thứ tự thời gian</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="focusSearchOnThisVideo()" class="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5">
+                        🎯 Lọc tìm kiếm trong video này
+                    </button>
+                    <button onclick="closeVideoTimelineModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Modal Body (Grid of all frames) -->
+            <div class="p-6 flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50" id="timelineFramesContainer">
+                <div class="flex items-center justify-center h-full text-slate-400">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 </div>
             </div>
         </div>
@@ -498,6 +540,7 @@
             const btn = document.getElementById('searchBtn');
             const orig = btn.innerHTML;
             const topK = parseInt(document.getElementById('topKSelect').value) || 100;
+            const videoFilter = document.getElementById('videoFilterInput') ? document.getElementById('videoFilterInput').value.trim() : '';
             
             btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang phân tích...`;
             btn.disabled = true;
@@ -510,8 +553,8 @@
                     const query = document.getElementById('kisInput').value.trim();
                     if (!query) throw new Error("Vui lòng nhập câu mô tả KIS");
                     endpoint = '/api/v1/search/kis';
-                    payload = { query: query, top_k: topK };
-                    document.getElementById('querySummary').textContent = `Query KIS: "${query}"`;
+                    payload = { query: query, top_k: topK, video_filter: videoFilter || null };
+                    document.getElementById('querySummary').textContent = `Query KIS: "${query}" ${videoFilter ? `(Chỉ trong ${videoFilter})` : ''}`;
                 } else if (_currentMode === 'qa') {
                     const query = document.getElementById('qaQueryInput').value.trim();
                     const question = document.getElementById('qaQuestionInput').value.trim() || query;
@@ -519,8 +562,8 @@
                     if (apiKey) localStorage.gemini_api_key = apiKey;
                     if (!query) throw new Error("Vui lòng nhập bối cảnh / câu hỏi Q&A");
                     endpoint = '/api/v1/search/qa';
-                    payload = { query: query, question: question, top_k: topK, gemini_api_key: apiKey || null };
-                    document.getElementById('querySummary').textContent = `Q&A: Cảnh "${query}" | Câu hỏi "${question}"`;
+                    payload = { query: query, question: question, top_k: topK, gemini_api_key: apiKey || null, video_filter: videoFilter || null };
+                    document.getElementById('querySummary').textContent = `Q&A: Cảnh "${query}" | Câu hỏi "${question}" ${videoFilter ? `(Chỉ trong ${videoFilter})` : ''}`;
                 } else if (_currentMode === 'trake') {
                     const events = getTrakeEvents();
                     if (events.length < 2) throw new Error("Vui lòng nhập ít nhất 2 mốc sự kiện cho TRAKE");
@@ -551,6 +594,7 @@
                 renderResults(_currentData);
                 updateCsvOutput(_currentData);
                 document.getElementById('exportCsvBtn').classList.remove('hidden');
+                showToast(`✅ Đã tìm thấy ${_currentData.length} kết quả phù hợp!`);
 
             } catch (err) {
                 alert("❌ " + err.message);
@@ -593,7 +637,6 @@
                 const submitText = `${item.video_id},${item.frame_id}`;
                 const card = document.createElement('div');
                 card.className = "animate-fade-in-up card-3d-hover relative aspect-[4/3] bg-white dark:bg-slate-900 rounded-3xl overflow-hidden group border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer";
-                card.onclick = () => copyToClipboard(submitText, `Thẻ #${rank}`);
 
                 card.innerHTML = `
                     <img src="${API_BASE}/api/v1/image/${item.video_id}/${item.filename}" 
@@ -618,9 +661,14 @@
                                 🔤 "${item.ocr_text}"
                             </div>
                         ` : ''}
-                        <button type="button" class="w-full py-2 bg-indigo-600 text-white text-xs font-bold font-mono rounded-xl shadow-md">
-                            📋 Copy: ${submitText}
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="copyToClipboard('${submitText}', 'Thẻ #${rank}')" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold font-mono rounded-xl shadow-md transition-all">
+                                📋 Copy
+                            </button>
+                            <button type="button" onclick="event.stopPropagation(); openVideoTimeline('${item.video_id}')" title="Xem tất cả các frame của video này" class="px-3 py-2 bg-slate-800 hover:bg-indigo-600 text-white text-xs font-bold font-mono rounded-xl shadow-md transition-all">
+                                🎞️ Xem cả Video
+                            </button>
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -644,8 +692,11 @@
                             <span class="text-xs font-black px-2 py-0.5 rounded-md bg-purple-600 text-white font-mono shadow-md">#${rank}</span>
                             <span class="text-xs font-bold text-white font-mono bg-black/60 px-2 py-0.5 rounded-md">${item.video_id}</span>
                         </div>
-                        <div class="absolute top-3 right-3 text-xs font-bold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md">
-                            F: ${item.frame_id}
+                        <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md">F: ${item.frame_id}</span>
+                            <button type="button" onclick="event.stopPropagation(); openVideoTimeline('${item.video_id}')" title="Xem toàn bộ timeline video này" class="text-[10px] font-bold text-cyan-300 font-mono bg-indigo-950/80 hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded-md border border-cyan-400/30 transition-all">
+                                🎞️ Xem cả Video
+                            </button>
                         </div>
                     </div>
                     <div class="p-4 flex-1 flex flex-col justify-between gap-3">
@@ -663,6 +714,9 @@
                                 <button id="qa_ai_btn_${index}" type="button" onclick="askAiForFrame(${index}, this)" title="Gọi Gemini Vision phân tích ảnh này" class="px-2.5 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1">
                                     ✨ AI
                                 </button>
+                                <button type="button" onclick="fillAnswerToAll(${index})" title="Áp dụng đáp án này cho toàn bộ 100 dòng CSV" class="px-2 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-500 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all">
+                                    ⚡ Tất cả
+                                </button>
                             </div>
                         </div>
                         <button type="button" onclick="copyQaRow(${index})" class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold font-mono rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-1.5 shadow-md">
@@ -678,6 +732,21 @@
                 const btn0 = document.getElementById('qa_ai_btn_0');
                 if (btn0) askAiForFrame(0, btn0);
             }, 100);
+        }
+
+        function fillAnswerToAll(index) {
+            const val = document.getElementById(`ans_${index}`).value.trim();
+            if (!val) {
+                showToast("Vui lòng nhập hoặc lấy đáp án trước khi điền cho tất cả!");
+                return;
+            }
+            _currentData.forEach((item, i) => {
+                item.answer = val;
+                const inp = document.getElementById(`ans_${i}`);
+                if (inp) inp.value = val;
+            });
+            updateCsvOutput(_currentData);
+            showToast(`✅ Đã điền đáp án <b>"${val}"</b> cho toàn bộ ${_currentData.length} dòng CSV!`);
         }
 
         async function askAiForFrame(index, btn) {
@@ -879,6 +948,105 @@
             toast._timer = setTimeout(() => {
                 toast.classList.add('translate-y-20', 'opacity-0');
             }, 2500);
+        }
+
+        // --- Video Timeline Browser (Drill-Down) ---
+        let _currentTimelineVideoId = '';
+
+        async function openVideoTimeline(videoId) {
+            _currentTimelineVideoId = videoId;
+            const modal = document.getElementById('videoTimelineModal');
+            const titleSpan = document.getElementById('timelineModalVideoId');
+            const countSpan = document.getElementById('timelineModalCount');
+            const container = document.getElementById('timelineFramesContainer');
+
+            titleSpan.textContent = videoId;
+            countSpan.textContent = '...';
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span class="text-xs font-mono">Đang tải toàn bộ keyframes của video ${videoId}...</span>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/video/${videoId}/timeline`);
+                if (!response.ok) throw new Error("Không thể tải timeline video");
+                const data = await response.json();
+                
+                countSpan.textContent = data.total_frames || data.frames.length;
+                renderTimelineGrid(data.frames, container);
+            } catch (err) {
+                container.innerHTML = `<div class="p-8 text-center text-rose-500 font-mono text-xs">Lỗi: ${err.message}</div>`;
+            }
+        }
+
+        function closeVideoTimelineModal() {
+            document.getElementById('videoTimelineModal').classList.add('hidden');
+        }
+
+        function focusSearchOnThisVideo() {
+            if (_currentTimelineVideoId) {
+                document.getElementById('videoFilterInput').value = _currentTimelineVideoId;
+                closeVideoTimelineModal();
+                showToast(`🎯 Đã ghim tìm kiếm tập trung vào video <b>${_currentTimelineVideoId}</b>!`);
+            }
+        }
+
+        function renderTimelineGrid(frames, container) {
+            if (!frames || frames.length === 0) {
+                container.innerHTML = `<div class="p-12 text-center text-slate-400 text-xs font-mono">Không có keyframe nào trong video này.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" id="timelineGrid"></div>`;
+            const grid = document.getElementById('timelineGrid');
+
+            frames.forEach((f, idx) => {
+                const submitText = `${f.video_id},${f.frame_id}`;
+                const card = document.createElement('div');
+                card.className = "group relative aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-500 transition-all flex flex-col justify-between";
+                
+                card.innerHTML = `
+                    <img src="${API_BASE}/api/v1/image/${f.video_id}/${f.filename}" 
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Frame';"
+                         class="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-transform duration-300">
+                    
+                    <div class="absolute top-1.5 left-1.5 right-1.5 flex justify-between items-center text-[10px] font-mono font-bold pointer-events-none">
+                        <span class="bg-black/70 text-white px-1.5 py-0.5 rounded">⏱️ ${formatTime(f.timestamp)}</span>
+                        <span class="bg-indigo-600/90 text-white px-1.5 py-0.5 rounded">F: ${f.frame_id}</span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-slate-950/85 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2.5 gap-2">
+                        <button type="button" onclick="copyToClipboard('${submitText}', 'Frame ${f.frame_id}')" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-[11px] font-bold rounded-lg shadow">
+                            📋 Copy: ${submitText}
+                        </button>
+                        ${_currentMode === 'qa' ? `
+                            <button type="button" onclick="useTimelineFrameForQa('${f.video_id}', '${f.filename}', ${f.frame_id})" class="w-full py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-mono text-[11px] font-bold rounded-lg shadow">
+                                ✨ Dùng cho Q&A
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function useTimelineFrameForQa(videoId, filename, frameId) {
+            closeVideoTimelineModal();
+            const newCard = {
+                video_id: videoId,
+                filename: filename,
+                frame_id: frameId,
+                timestamp: 0.0,
+                score: 1.0,
+                answer: ""
+            };
+            _currentData.unshift(newCard);
+            renderQaCards(_currentData, document.getElementById('resultsContainer'));
+            updateCsvOutput(_currentData);
+            showToast(`✨ Đã chọn Frame ${frameId} của ${videoId} vào danh sách Q&A!`);
         }
 
         // Restore saved Gemini API Key

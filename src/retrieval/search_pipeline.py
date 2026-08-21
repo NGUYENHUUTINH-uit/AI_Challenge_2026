@@ -138,6 +138,12 @@ VIETNAMESE_OBJECT_MAP = {
     # Đồ ăn
     "bánh mì": "sandwich", "chuối": "banana", "táo": "apple", "pizza": "pizza",
     "bánh ngọt": "cake",
+
+    # Nhạc cụ & Sân khấu / Trường học
+    "trống": "drum", "bộ trống": "drum", "trống cơ": "drum", "trống điện": "drum",
+    "đàn": "piano", "piano": "piano", "đàn piano": "piano", "đàn organ": "piano",
+    "đàn guitar": "guitar", "guitar": "guitar", "ghi ta": "guitar", "đàn violon": "violin",
+    "micro": "microphone", "sân khấu": "stage", "khăn đỏ": "tie", "đồng phục": "person",
 }
 
 

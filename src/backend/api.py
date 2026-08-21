@@ -55,6 +55,7 @@ class KisQueryRequest(BaseModel):
     session_id: Optional[str] = None
     auto_expand: Optional[bool] = True
     gemini_api_key: Optional[str] = None
+    video_filter: Optional[str] = None
 
 
 class QaQueryRequest(BaseModel):
@@ -62,6 +63,7 @@ class QaQueryRequest(BaseModel):
     question: Optional[str] = None
     top_k: Optional[int] = 100
     gemini_api_key: Optional[str] = None
+    video_filter: Optional[str] = None
 
 
 class TrakeQueryRequest(BaseModel):
@@ -141,7 +143,8 @@ async def search_kis(request: KisQueryRequest):
 
         raw_results = _retriever.search_keyframes(
             query_text=search_prompt,
-            top_k=min(request.top_k * 2, 200)
+            top_k=min(request.top_k * 2, 200),
+            video_filter=request.video_filter
         )
 
         reranked = rerank_by_objects(raw_results, query)
@@ -179,7 +182,8 @@ async def search_qa(request: QaQueryRequest):
 
         raw_results = _retriever.search_keyframes(
             query_text=query,
-            top_k=min(request.top_k * 2, 200)
+            top_k=min(request.top_k * 2, 200),
+            video_filter=request.video_filter
         )
 
         reranked = rerank_by_objects(raw_results, query)
@@ -221,6 +225,23 @@ async def search_qa(request: QaQueryRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm Q&A: {str(e)}")
+
+
+@app.get("/api/v1/video/{video_id}/timeline")
+async def get_video_timeline_endpoint(video_id: str):
+    """
+    Lấy toàn bộ danh sách keyframe của video theo thứ tự thời gian (Drill-down).
+    """
+    try:
+        frames = _retriever.get_video_timeline(video_id)
+        return {
+            "status": "success",
+            "video_id": video_id,
+            "total_frames": len(frames),
+            "frames": frames
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi lấy timeline video: {str(e)}")
 
 
 @app.post("/api/v1/qa/answer")

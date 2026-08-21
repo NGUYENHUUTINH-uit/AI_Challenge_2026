@@ -255,47 +255,37 @@ class Retriever:
     def search_keyframes(self,
                          query_text: str = None,
                          query_image=None,
-                         top_k: int = 20) -> list:
+                         top_k: int = 20,
+                         video_filter: str = None) -> list:
         """
-        T\u00ecm ki\u1ebfm keyframe b\u1eb1ng text ho\u1eb7c \u1ea3nh.
-
-        Returns:
-            list of dict:
-            {
-              "video_id":   "L25_V001",
-              "filename":   "0042.jpg",
-              "timestamp":  12.48,
-              "score":      0.87,
-              "objects":    ["person", "car"],
-              "image_path": "data/processed/keyframes/L25_V001/0042.jpg"
-            }
+        Tìm kiếm keyframe bằng text hoặc ảnh.
+        Có hỗ trợ video_filter để chỉ tìm trong 1 video cụ thể.
         """
         self._ensure_loaded()
 
         if query_text is None and query_image is None:
             return []
 
-        # 1. Encode query \u2192 vector
+        # 1. Encode query → vector
         if query_text:
             query_vec = self._encode_text(query_text)    # (1, 512)
         else:
-            # TODO: encode query_image \u2014 s\u1ebd th\u00eam sau
             return []
 
-        # 2. FAISS search
-        scores, indices = self._index.search(query_vec, top_k)
+        # 2. FAISS search (nếu có filter video thì lấy nhiều hơn để lọc)
+        fetch_k = top_k * 5 if video_filter else top_k
+        scores, indices = self._index.search(query_vec, min(fetch_k, self._index.ntotal))
         scores  = scores[0].tolist()
         indices = indices[0].tolist()
 
-        # 3. Map FAISS index \u2192 th\u00f4ng tin frame
+        # 3. Map FAISS index → thông tin frame
         results = []
         for score, faiss_idx in zip(scores, indices):
-            if faiss_idx < 0:       # FAISS tr\u1ea3 -1 khi kh\u00f4ng \u0111\u1ee7 k\u1ebft qu\u1ea3
+            if faiss_idx < 0:
                 continue
 
             info = self._frame_map.get(str(faiss_idx), {})
 
-            # Lấy filename: ưu tiên 'filename', nếu không format từ n (BTC: 001.jpg, self: 0000.jpg)
             filename = info.get("filename")
             if not filename:
                 n_val = info.get("n")
@@ -308,17 +298,19 @@ class Retriever:
             video_id = info.get("video_id") or (
                 filename.split("/")[0] if "/" in filename else "unknown"
             )
-            frame_name = Path(filename).name    # "001.jpg" hoặc "0000.jpg"
 
-            # Lấy timestamp (giây float): ưu tiên 'timestamp', fallback 'pts_time'
+            # Lọc theo video nếu có yêu cầu
+            if video_filter and video_id.strip().upper() != video_filter.strip().upper():
+                continue
+
+            frame_name = Path(filename).name
+
             timestamp = info.get("timestamp")
             if timestamp is None:
                 timestamp = info.get("pts_time")
             if timestamp is not None:
                 timestamp = round(float(timestamp), 2)
 
-            # Frame ID theo thể lệ: số nguyên tuyệt đối
-            # Ưu tiên: frame_id → frame_idx → n-1 (n là 1-indexed)
             frame_id = info.get("frame_id")
             if frame_id is None:
                 frame_id = info.get("frame_idx")
@@ -327,25 +319,22 @@ class Retriever:
                 frame_id = int(n_raw) - 1 if n_raw is not None else 0
             frame_id = int(frame_id)
 
-            # 4. Load objects từ JSON (ưu tiên BTC format, fallback YOLOv8m)
-            n_val = info.get("n")  # frame number BTC (1-indexed)
+            n_val = info.get("n")
             objects = self._load_objects(
                 video_id, frame_name,
                 n=int(n_val) if n_val is not None else None
             )
 
-            # 4b. Load OCR text (nếu có trong OCR index)
             from src.indexing.ocr_indexer import get_ocr_indexer
             ocr_text = get_ocr_indexer().get_text(video_id, frame_name)
 
-            # 5. Image path cho UI
             img_path = str(self._keyframe_dir / video_id / frame_name)
 
             results.append({
                 "video_id":   video_id,
                 "filename":   frame_name,
                 "timestamp":  timestamp,
-                "frame_id":   frame_id,      # ← số nguyên, dùng cho CSV nộp bài
+                "frame_id":   frame_id,
                 "score":      round(float(score), 4),
                 "objects":    objects,
                 "ocr_text":   ocr_text,
@@ -353,7 +342,72 @@ class Retriever:
                 "scene_id":   info.get("scene_id"),
             })
 
+            if len(results) >= top_k:
+                break
+
         return results
+
+    def get_video_timeline(self, video_id: str) -> list:
+        """
+        Lấy toàn bộ danh sách keyframe của một video theo thứ tự thời gian (Chronological timeline).
+        Dùng cho tính năng Drill-down / Xem toàn bộ frame của video.
+        """
+        self._ensure_loaded()
+        v_clean = video_id.strip().upper()
+        frames = []
+
+        for faiss_idx_str, info in self._frame_map.items():
+            vid = (info.get("video_id") or "").strip().upper()
+            if vid == v_clean:
+                filename = info.get("filename")
+                if not filename:
+                    n_val = info.get("n")
+                    if n_val is not None:
+                        filename = f"{int(n_val):03d}.jpg"
+                    else:
+                        frame_idx_val = info.get("frame_idx", 0)
+                        filename = f"{int(frame_idx_val):04d}.jpg"
+
+                frame_name = Path(filename).name
+
+                timestamp = info.get("timestamp")
+                if timestamp is None:
+                    timestamp = info.get("pts_time")
+                if timestamp is not None:
+                    timestamp = round(float(timestamp), 2)
+
+                frame_id = info.get("frame_id")
+                if frame_id is None:
+                    frame_id = info.get("frame_idx")
+                if frame_id is None:
+                    n_raw = info.get("n")
+                    frame_id = int(n_raw) - 1 if n_raw is not None else 0
+                frame_id = int(frame_id)
+
+                n_val = info.get("n")
+                objects = self._load_objects(
+                    video_id, frame_name,
+                    n=int(n_val) if n_val is not None else None
+                )
+
+                from src.indexing.ocr_indexer import get_ocr_indexer
+                ocr_text = get_ocr_indexer().get_text(video_id, frame_name)
+                img_path = str(self._keyframe_dir / video_id / frame_name)
+
+                frames.append({
+                    "video_id":   video_id,
+                    "filename":   frame_name,
+                    "timestamp":  timestamp or 0.0,
+                    "frame_id":   frame_id,
+                    "objects":    objects,
+                    "ocr_text":   ocr_text,
+                    "image_path": img_path,
+                    "n":          int(n_val) if n_val is not None else 0
+                })
+
+        # Sắp xếp theo timestamp hoặc số thứ tự n
+        frames.sort(key=lambda x: (x["timestamp"], x["frame_id"], x["n"]))
+        return frames
 
 
 if __name__ == "__main__":
