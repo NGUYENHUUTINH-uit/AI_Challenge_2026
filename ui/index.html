@@ -3,217 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Utis - Vision AI</title>
-    <!-- TailwindCSS via CDN -->
+    <title>AI Challenge 2026 — Video Retrieval System</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            900: '#4c1d95',
+                        }
+                    },
                     animation: {
-                        'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
                         'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
                     },
                     keyframes: {
-                        fadeInUp: {
-                            '0%': { opacity: '0', transform: 'translateY(30px) scale(0.95)' },
-                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
-                        },
                         float: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-5px)' },
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
                         }
                     }
                 }
             }
         }
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Base styles cho Light / Dark mode hài hòa */
-        body { 
-            @apply bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-500 ease-in-out;
-            background-image: radial-gradient(circle at top right, rgba(139, 92, 246, 0.05), transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.05), transparent 40%);
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        
-        .dark body {
-            background-image: radial-gradient(circle at top right, rgba(168, 85, 247, 0.15), transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(6, 182, 212, 0.1), transparent 40%);
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
         }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-700 rounded-full; }
-        ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
-
-        /* Animations Glowing */
-        @keyframes pulse-glow-dark {
-            0%, 100% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); border-color: rgba(168, 85, 247, 0.4); }
-            50% { box-shadow: 0 0 35px rgba(168, 85, 247, 0.7); border-color: rgba(168, 85, 247, 0.9); }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        @keyframes pulse-glow-light {
-            0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.4); }
-            50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); border-color: rgba(139, 92, 246, 0.7); }
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
-        
-        .dark .hover-pulse-glow:hover, .dark .drag-active { animation: pulse-glow-dark 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .hover-pulse-glow:hover, .drag-active { animation: pulse-glow-light 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        
-        .dark .drag-active { background-color: rgba(168, 85, 247, 0.1) !important; }
-        .drag-active { background-color: rgba(139, 92, 246, 0.05) !important; }
-
-        /* Card Hover 3D Effect */
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.6);
+        }
         .card-3d-hover {
-            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .card-3d-hover:hover {
             transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 20px rgba(139, 92, 246, 0.15);
+            box-shadow: 0 20px 35px -10px rgba(124, 58, 237, 0.25);
         }
-        .dark .card-3d-hover:hover {
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 25px rgba(168, 85, 247, 0.25);
+        .mode-tab.active {
+            background: linear-gradient(135deg, #6366f1, #9333ea);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
     </style>
 </head>
-<body class="min-h-screen font-sans antialiased overflow-hidden flex relative">
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden flex relative">
     
-    <!-- Theme Toggle (Góc trên cùng bên phải) -->
-    <div class="fixed top-4 right-8 z-50">
-        <button id="themeToggle" class="p-3 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:scale-110 hover:shadow-[0_0_15px_rgba(139,92,246,0.3)] transition-all shadow-lg">
-            <!-- Sun Icon for Light Mode -->
-            <svg class="w-5 h-5 hidden dark:block text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            <!-- Moon Icon for Dark Mode -->
-            <svg class="w-5 h-5 block dark:hidden text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    <!-- Theme Toggle & Header Badges -->
+    <div class="fixed top-4 right-8 z-50 flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 text-xs font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-slate-600 dark:text-slate-400">AIC 2026 Engine Ready</span>
+        </div>
+        <button id="themeToggle" class="p-2.5 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:scale-110 transition-all shadow-md">
+            <svg class="w-4 h-4 hidden dark:block text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <svg class="w-4 h-4 block dark:hidden text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
         </button>
     </div>
 
-    <!-- Left Sidebar (Input Panel - Đã chuyển sang bên trái) -->
-    <aside id="leftPanel" class="fixed left-0 top-0 h-screen border-r border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 backdrop-blur-3xl z-20 flex flex-col p-8 shadow-[10px_0_40px_rgba(0,0,0,0.03)] dark:shadow-[15px_0_40px_rgba(0,0,0,0.4)] transition-colors duration-500" style="width: 420px;">
+    <!-- Left Sidebar (Control & Query Panel) -->
+    <aside id="leftPanel" class="fixed left-0 top-0 h-screen border-r border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl z-20 flex flex-col p-6 shadow-xl transition-colors duration-300" style="width: 440px;">
         
-        <!-- Sidebar Top: Title -->
-        <div class="flex items-center gap-4 mb-12 animate-fade-in-up" style="animation-delay: 0ms;">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 dark:from-purple-600 dark:to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 dark:shadow-[0_0_20px_rgba(168,85,247,0.4)] relative overflow-hidden group">
-                <div class="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-700 skew-x-12 -translate-x-full"></div>
-                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+        <!-- Sidebar Top: Brand Header -->
+        <div class="flex items-center gap-3.5 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-extrabold tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-purple-400 dark:to-cyan-300 uppercase">Vision AI</h1>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-[0.2em] uppercase mt-0.5">Team Utis Core</p>
+                <h1 class="text-xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-500 dark:from-indigo-400 dark:to-purple-300 uppercase">AIC 2026 Core</h1>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-mono uppercase tracking-widest">Multi-Modal Video Retrieval</p>
             </div>
         </div>
 
-        <!-- Sidebar Middle: Drag and Drop -->
-        <div class="flex-1 flex flex-col gap-8 justify-center">
-            <div id="dropzone" class="animate-fade-in-up border-2 border-dashed border-slate-300 dark:border-slate-700/80 rounded-[2rem] p-8 flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer group bg-slate-100/50 dark:bg-slate-950/40 hover-pulse-glow shadow-inner" style="animation-delay: 100ms;">
-                <div class="w-16 h-16 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 flex items-center justify-center group-hover:bg-indigo-50 dark:group-hover:bg-purple-900/30 transition-all duration-300 shadow-sm dark:shadow-lg group-hover:scale-110">
-                    <svg class="w-8 h-8 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+        <!-- 3-MODE SELECTOR TABS (Thể lệ cuộc thi) -->
+        <div class="mb-5 bg-slate-100 dark:bg-slate-950/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex gap-1">
+            <button id="tabKis" class="mode-tab active flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5" onclick="switchMode('kis')">
+                <span>🎯</span> KIS
+            </button>
+            <button id="tabQa" class="mode-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center justify-center gap-1.5" onclick="switchMode('qa')">
+                <span>❓</span> Q&A
+            </button>
+            <button id="tabTrake" class="mode-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center justify-center gap-1.5" onclick="switchMode('trake')">
+                <span>⏱️</span> TRAKE
+            </button>
+        </div>
+
+        <!-- Scrollable Inputs Area -->
+        <div class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4">
+
+            <!-- MODE 1: KIS INPUT -->
+            <div id="panelKis" class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>📝</span> Mô tả Textual KIS
+                    </label>
+                    <span class="text-[10px] font-mono bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 px-2 py-0.5 rounded-md">Format: video_id,frame_id</span>
                 </div>
-                <div class="text-center">
-                    <p class="text-slate-700 dark:text-slate-300 font-bold tracking-widest text-[11px] uppercase mb-1.5 group-hover:text-indigo-600 dark:group-hover:text-white transition-colors">Tải Ảnh / Video Gốc</p>
-                    <p class="text-slate-500 text-[10px] uppercase font-mono">Kéo thả hoặc click để duyệt</p>
+                <textarea id="kisInput" rows="4" placeholder="Nhập câu mô tả cảnh cần tìm (vd: người đi xe máy áo mưa đỏ, xe bus số 54)..."
+                    class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none transition-all placeholder-slate-400 dark:placeholder-slate-600"></textarea>
+
+                <div class="flex flex-wrap gap-1.5">
+                    <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('kis', 'người mặc áo mưa đi xe máy')">Áo mưa xe máy</button>
+                    <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('kis', 'xe buýt số 54 trên đường')">Xe bus số 54 (OCR)</button>
+                    <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('kis', 'biển hiệu cửa hàng')">Biển hiệu</button>
                 </div>
-                <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
             </div>
 
-            <!-- Sidebar Bottom: Search & Suggestions -->
-            <div class="flex flex-col gap-6 animate-fade-in-up" style="animation-delay: 200ms;">
-                <div class="relative group">
-                    <div class="absolute top-4 left-4 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                    <textarea id="searchInput" rows="4" placeholder="Mô tả ngữ nghĩa phân cảnh..." 
-                        class="block w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-purple-500/50 text-sm transition-all shadow-inner resize-none"></textarea>
+            <!-- MODE 2: Q&A INPUT -->
+            <div id="panelQa" class="hidden flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>🎬</span> 1. Bối cảnh cần tìm
+                    </label>
+                    <span class="text-[10px] font-mono bg-purple-500/10 text-purple-500 dark:text-purple-400 px-2 py-0.5 rounded-md">Format: video,frame,"ans"</span>
+                </div>
+                <textarea id="qaQueryInput" rows="2" placeholder="Mô tả bối cảnh để tìm video (vd: người phụ nữ đang đứng trước cửa hàng)..."
+                    class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all placeholder-slate-400 dark:placeholder-slate-600"></textarea>
+
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
+                    <span>❓</span> 2. Câu hỏi chi tiết (Question)
+                </label>
+                <input id="qaQuestionInput" type="text" placeholder="Câu hỏi (vd: Có bao nhiêu chiếc xe?, Áo màu gì?)..."
+                    class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all placeholder-slate-400 dark:placeholder-slate-600">
+
+                <div class="flex flex-wrap gap-1.5">
+                    <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('qa', 'xe ô tô đậu ven đường', 'Có bao nhiêu xe ô tô?')">Đếm xe ô tô</button>
+                    <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('qa', 'người đàn ông đang cầm micro', 'Chiếc áo màu gì?')">Hỏi màu áo</button>
+                </div>
+            </div>
+
+            <!-- MODE 3: TRAKE INPUT -->
+            <div id="panelTrake" class="hidden flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>⏱️</span> Chuỗi sự kiện theo thời gian
+                    </label>
+                    <span class="text-[10px] font-mono bg-pink-500/10 text-pink-500 dark:text-pink-400 px-2 py-0.5 rounded-md">Format: video,f1,f2,...,fn</span>
                 </div>
                 
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex flex-wrap gap-2 flex-1">
-                        <button class="text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-indigo-600 dark:hover:text-cyan-300 hover:border-indigo-300 dark:hover:border-cyan-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(6,182,212,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Đường phố</button>
-                        <button class="text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(168,85,247,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Xe cộ</button>
+                <div id="trakeEventsList" class="flex flex-col gap-2.5">
+                    <div class="trake-event-item flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 text-xs font-black font-mono flex items-center justify-center">1</span>
+                        <input type="text" class="event-input flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-pink-500/50 outline-none" placeholder="Sự kiện 1: vd 'người đi bộ trên vỉa hè'">
                     </div>
-                    <div class="flex items-center gap-1.5 bg-white/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl shadow-sm">
-                        <span class="text-[10px] font-bold uppercase text-slate-400 font-mono">Top:</span>
-                        <select id="topKSelect" class="bg-transparent text-xs font-bold font-mono text-indigo-600 dark:text-cyan-400 outline-none cursor-pointer">
-                            <option value="20">20</option>
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                        </select>
+                    <div class="trake-event-item flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 text-xs font-black font-mono flex items-center justify-center">2</span>
+                        <input type="text" class="event-input flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-pink-500/50 outline-none" placeholder="Sự kiện 2: vd 'bước lên xe buýt'">
                     </div>
                 </div>
 
-                <button id="searchBtn" class="mt-1 w-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-purple-600 dark:via-fuchsia-600 dark:to-pink-600 hover:from-indigo-600 hover:to-purple-700 dark:hover:from-purple-500 dark:hover:to-pink-500 text-white font-bold py-4 rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.3)] dark:shadow-[0_0_20px_rgba(192,38,211,0.3)] hover:shadow-[0_12px_25px_rgba(99,102,241,0.5)] dark:hover:shadow-[0_0_30px_rgba(192,38,211,0.6)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3">
-                    <span class="tracking-widest uppercase text-sm">Truy Xuất Dữ Liệu</span>
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </button>
-                
-                <!-- Nút Export dạng Text để Copy -->
-                <button id="exportCsvBtn" class="mt-1 w-full bg-white dark:bg-slate-900 border-2 border-indigo-500 dark:border-cyan-500 text-indigo-600 dark:text-cyan-400 hover:bg-indigo-50 dark:hover:bg-cyan-900/30 font-bold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 hidden">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    <span class="tracking-widest uppercase text-xs">Copy Dữ Liệu Nộp Bài</span>
-                </button>
+                <div class="flex items-center justify-between gap-2">
+                    <button type="button" onclick="addTrakeEvent()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Thêm Event
+                    </button>
+                    <button type="button" onclick="removeTrakeEvent()" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl transition-all">
+                        Xóa bớt
+                    </button>
+                </div>
             </div>
+
+            <!-- Top-K Selector & Options -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Số dòng nộp tối đa:</span>
+                <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <select id="topKSelect" class="bg-transparent text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 outline-none cursor-pointer">
+                        <option value="20">20 dòng</option>
+                        <option value="50">50 dòng</option>
+                        <option value="100" selected>100 dòng (Chuẩn BTC)</option>
+                    </select>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Sidebar Bottom Action Buttons -->
+        <div class="pt-4 mt-auto border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2.5">
+            <button id="searchBtn" class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2">
+                <span id="searchBtnText" class="tracking-wider uppercase text-xs font-bold">Thực Hiện Truy Vấn</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+
+            <button id="exportCsvBtn" class="hidden w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800/80 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs font-mono">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>XEM & XUẤT CSV NỘP BÀI</span>
+            </button>
         </div>
     </aside>
 
-    <!-- Resizer Handle -->
-    <div id="resizer" class="fixed top-0 bottom-0 w-2 bg-transparent hover:bg-indigo-500/20 dark:hover:bg-purple-500/30 cursor-col-resize z-40 transition-colors" style="left: 420px;"></div>
+    <!-- Resizer Divider -->
+    <div id="resizer" class="fixed top-0 bottom-0 w-2 bg-transparent hover:bg-indigo-500/20 cursor-col-resize z-40" style="left: 440px;"></div>
 
-    <!-- Right Main Area (Image Results - Đã chuyển sang bên phải) -->
-    <main id="rightPanel" class="flex-1 h-screen overflow-y-auto relative z-10 px-10 py-12" style="margin-left: 420px;">
+    <!-- Main Results Area -->
+    <main id="rightPanel" class="flex-1 h-screen overflow-y-auto relative z-10 px-8 py-8" style="margin-left: 440px;">
         
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 sticky top-0 bg-slate-50/90 dark:bg-slate-900/80 backdrop-blur-xl py-5 rounded-2xl px-6 z-30 border border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-xl transition-colors duration-500">
+        <!-- Header Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800/80 sticky top-0 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-xl z-30">
             <div>
-                <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-3 tracking-widest uppercase">
-                    <svg class="w-7 h-7 text-indigo-500 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Kết Quả Trích Xuất
-                </h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium tracking-wider flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
-                    Sắp xếp: Độ tương đồng % giảm dần. Nếu bằng nhau xếp theo thời gian tăng dần.
-                </p>
+                <div class="flex items-center gap-2.5">
+                    <span id="currentModeBadge" class="text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-md bg-indigo-600 text-white shadow-sm">MODE: KIS</span>
+                    <h2 class="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-wide uppercase">Kết Quả Truy Xuất</h2>
+                </div>
+                <p id="querySummary" class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">Sẵn sàng thực hiện tìm kiếm</p>
             </div>
-            <div class="text-[11px] font-bold tracking-widest text-slate-600 dark:text-slate-300 flex items-center gap-2 bg-white dark:bg-slate-950/60 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)] dark:shadow-[0_0_10px_rgba(6,182,212,1)]"></span>
-                <span id="resultCount" class="text-indigo-600 dark:text-cyan-300 font-black text-sm">12</span> KẾT QUẢ TÌM THẤY
+            <div class="flex items-center gap-3">
+                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl shadow-sm">
+                    Tìm thấy: <b id="resultCount" class="text-indigo-600 dark:text-indigo-400 font-bold">0</b> kết quả
+                </div>
             </div>
-        </div>
-        
-        <!-- Grid 3 cột cố định -->
-        <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-            <!-- JavaScript Inject -->
         </div>
 
-        <!-- CSV Export Panel -->
-        <div id="csvPanel" class="hidden fixed bottom-0 right-0 z-50 transition-all duration-500" style="left: 420px;">
-            <div class="mx-10 mb-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_-8px_40px_rgba(0,0,0,0.5)]">
-                <!-- Header CSV Panel -->
-                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-wide">CSV Output — KIS Format</p>
-                            <p class="text-[10px] text-slate-400 font-mono">video_id, frame_id &nbsp;·&nbsp; <span id="csvLineCount" class="text-emerald-500 font-bold">0</span> dòng &nbsp;·&nbsp; Có thể sửa trực tiếp trước khi copy</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="copyAllBtn" onclick="copyCsv()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold tracking-widest transition-all hover:scale-105 shadow-md shadow-emerald-500/30">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            COPY ALL
-                        </button>
-                        <button onclick="toggleCsvPanel()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                    </div>
+        <!-- Dynamic Results Grid / Container -->
+        <div id="resultsContainer" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-24">
+            <!-- Initial State -->
+            <div class="col-span-full py-24 text-center text-slate-400">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <!-- Textarea CSV -->
-                <textarea id="csvOutput"
-                    class="w-full bg-transparent px-6 py-4 font-mono text-xs text-emerald-700 dark:text-emerald-300 resize-none focus:outline-none placeholder-slate-400"
-                    rows="6"
-                    placeholder="Kết quả KIS sẽ hiện ở đây sau khi search..."
-                    spellcheck="false"></textarea>
+                <p class="text-base font-bold text-slate-600 dark:text-slate-300">Sẵn sàng truy xuất video AI Challenge 2026</p>
+                <p class="text-xs mt-1 text-slate-500">Chọn chế độ KIS / Q&A / TRAKE bên trái và nhập truy vấn để tìm kiếm.</p>
             </div>
         </div>
 
@@ -221,117 +256,157 @@
 
     <!-- Export Modal -->
     <div id="exportModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" id="exportModalBackdrop"></div>
-        
-        <!-- Modal Content -->
-        <div class="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 opacity-0 transition-all duration-300 mx-4" id="exportModalContent">
-            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                    Kết Quả Nộp Bài KIS (Tối đa 100 dòng)
-                </h3>
-                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" id="exportModalBackdrop"></div>
+        <div class="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 opacity-0 transition-all duration-300 mx-4" id="exportModalContent">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/60">
+                <div class="flex items-center gap-2.5">
+                    <span id="modalModeBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-600 text-white">KIS</span>
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100" id="modalTitle">File CSV Nộp Bài BTC</h3>
+                </div>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="p-6">
-                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 font-mono">
-                    Format chuẩn BTC: <b>&lt;video_id&gt;,&lt;frame_id&gt;</b> (UTF-8, dấu phẩy, không header)
+                <p id="modalFormatDescription" class="text-xs text-slate-500 dark:text-slate-400 mb-3 font-mono">
+                    Format: <b>&lt;video_id&gt;,&lt;frame_id&gt;</b> (Tối đa 100 dòng, UTF-8, không header)
                 </p>
                 <div class="relative mb-4">
-                    <textarea id="exportTextarea" rows="12" readonly class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"></textarea>
+                    <textarea id="exportTextarea" rows="12" readonly class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none resize-none"></textarea>
                 </div>
-                <div class="flex items-center justify-end gap-3">
-                    <button id="downloadCsvBtn" class="px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold font-mono rounded-xl transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        Tải file .CSV
-                    </button>
-                    <button id="copyToClipboardBtn" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold font-mono rounded-xl shadow-lg flex items-center gap-2 transition-transform active:scale-95">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        Copy toàn bộ
-                    </button>
+                <div class="flex items-center justify-between gap-3">
+                    <div class="text-xs font-mono text-slate-500 dark:text-slate-400">
+                        Số dòng: <b id="modalLineCount" class="text-indigo-600 dark:text-indigo-400">0</b> / 100
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="downloadCsvBtn" class="px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold font-mono rounded-xl transition-all flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Tải file .CSV
+                        </button>
+                        <button id="copyToClipboardBtn" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold font-mono rounded-xl shadow-lg flex items-center gap-2 transition-transform active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            Copy toàn bộ
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Script Logic -->
     <script>
-        // --- Theme Toggle Logic ---
-        const html = document.documentElement;
-        const themeToggle = document.getElementById('themeToggle');
-        
-        // Kiểm tra theme đã lưu
-        if (localStorage.theme === 'light') {
-            html.classList.remove('dark');
-        }
+        const API_BASE = "http://localhost:8000";
+        let _currentMode = 'kis';       // 'kis' | 'qa' | 'trake'
+        let _currentData = [];          // Dữ liệu kết quả hiện tại
 
-        themeToggle.addEventListener('click', () => {
+        // --- Theme Toggle ---
+        const html = document.documentElement;
+        document.getElementById('themeToggle').addEventListener('click', () => {
             html.classList.toggle('dark');
-            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
         });
 
-        // --- Resizer Logic ---
+        // --- Resizer Sidebar ---
         const resizer = document.getElementById('resizer');
         const leftPanel = document.getElementById('leftPanel');
         const rightPanel = document.getElementById('rightPanel');
         let isResizing = false;
 
-        resizer.addEventListener('mousedown', (e) => {
+        resizer.addEventListener('mousedown', () => {
             isResizing = true;
             document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none'; 
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
-            let newWidth = e.clientX;
-            // Giới hạn độ rộng min max cho Sidebar bên trái
-            if (newWidth < 320) newWidth = 320;
-            if (newWidth > 600) newWidth = 600;
-            
-            leftPanel.style.width = newWidth + 'px';
-            resizer.style.left = newWidth + 'px';
-            rightPanel.style.marginLeft = newWidth + 'px';
+            let nw = Math.max(340, Math.min(650, e.clientX));
+            leftPanel.style.width = nw + 'px';
+            resizer.style.left = nw + 'px';
+            rightPanel.style.marginLeft = nw + 'px';
         });
 
         window.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = 'default';
-                document.body.style.userSelect = 'auto';
-            }
+            isResizing = false;
+            document.body.style.cursor = 'default';
         });
 
-        // --- Drag and Drop Logic ---
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const searchInput = document.getElementById('searchInput');
+        // --- Mode Switching ---
+        function switchMode(mode) {
+            _currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active', 'text-white'));
+            
+            document.getElementById('panelKis').classList.add('hidden');
+            document.getElementById('panelQa').classList.add('hidden');
+            document.getElementById('panelTrake').classList.add('hidden');
 
-        dropzone.addEventListener('click', () => fileInput.click());
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-active'); });
-        dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('drag-active'); });
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('drag-active');
-            if (e.dataTransfer.files.length) {
-                const file = e.dataTransfer.files[0];
-                dropzone.querySelector('p.font-bold').textContent = file.name;
-                dropzone.querySelector('p.font-mono').textContent = (file.size / (1024*1024)).toFixed(2) + " MB";
-                dropzone.style.borderColor = html.classList.contains('dark') ? "rgba(168, 85, 247, 1)" : "rgba(99, 102, 241, 1)";
+            const badge = document.getElementById('currentModeBadge');
+            const modalBadge = document.getElementById('modalModeBadge');
+
+            if (mode === 'kis') {
+                document.getElementById('tabKis').classList.add('active');
+                document.getElementById('panelKis').classList.remove('hidden');
+                badge.textContent = 'MODE: TEXTUAL KIS';
+                badge.className = 'text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-md bg-indigo-600 text-white shadow-sm';
+                modalBadge.textContent = 'KIS';
+                modalBadge.className = 'text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-600 text-white';
+                document.getElementById('modalFormatDescription').innerHTML = 'Format chuẩn BTC: <b>&lt;video_id&gt;,&lt;frame_id&gt;</b> (Tối đa 100 dòng)';
+            } else if (mode === 'qa') {
+                document.getElementById('tabQa').classList.add('active');
+                document.getElementById('panelQa').classList.remove('hidden');
+                badge.textContent = 'MODE: VISUAL Q&A';
+                badge.className = 'text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-md bg-purple-600 text-white shadow-sm';
+                modalBadge.textContent = 'Q&A';
+                modalBadge.className = 'text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-purple-600 text-white';
+                document.getElementById('modalFormatDescription').innerHTML = 'Format chuẩn BTC: <b>&lt;video_id&gt;,&lt;frame_id&gt;,"&lt;answer&gt;"</b> (Tối đa 100 dòng)';
+            } else if (mode === 'trake') {
+                document.getElementById('tabTrake').classList.add('active');
+                document.getElementById('panelTrake').classList.remove('hidden');
+                badge.textContent = 'MODE: TRAKE';
+                badge.className = 'text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-md bg-pink-600 text-white shadow-sm';
+                modalBadge.textContent = 'TRAKE';
+                modalBadge.className = 'text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-pink-600 text-white';
+                document.getElementById('modalFormatDescription').innerHTML = 'Format chuẩn BTC: <b>&lt;video_id&gt;,&lt;frame_1&gt;,&lt;frame_2&gt;,...,&lt;frame_N&gt;</b> (Tối đa 100 dòng)';
             }
-        });
+        }
 
-        // Concept Chips
-        document.querySelectorAll('aside .flex-wrap > button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                searchInput.value = btn.textContent;
-                searchInput.focus();
+        function setQuery(mode, text1, text2 = '') {
+            switchMode(mode);
+            if (mode === 'kis') {
+                document.getElementById('kisInput').value = text1;
+            } else if (mode === 'qa') {
+                document.getElementById('qaQueryInput').value = text1;
+                document.getElementById('qaQuestionInput').value = text2;
+            }
+        }
+
+        // --- TRAKE Dynamic Event Inputs ---
+        function addTrakeEvent() {
+            const list = document.getElementById('trakeEventsList');
+            const count = list.children.length + 1;
+            const item = document.createElement('div');
+            item.className = 'trake-event-item flex items-center gap-2';
+            item.innerHTML = `
+                <span class="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 text-xs font-black font-mono flex items-center justify-center">${count}</span>
+                <input type="text" class="event-input flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-pink-500/50 outline-none" placeholder="Sự kiện ${count}: mô tả hành động">
+            `;
+            list.appendChild(item);
+        }
+
+        function removeTrakeEvent() {
+            const list = document.getElementById('trakeEventsList');
+            if (list.children.length > 2) {
+                list.removeChild(list.lastChild);
+            }
+        }
+
+        function getTrakeEvents() {
+            const inputs = document.querySelectorAll('#trakeEventsList .event-input');
+            const events = [];
+            inputs.forEach(inp => {
+                const val = inp.value.trim();
+                if (val) events.push(val);
             });
-        });
-
-        // --- Data & API Fetch ---
-        const API_BASE = "http://localhost:8000";
+            return events;
+        }
 
         function formatTime(seconds) {
             if (!seconds && seconds !== 0) return "--:--:--";
@@ -341,213 +416,267 @@
             return `${h}:${m}:${s}`;
         }
 
-        function customSort(data) {
-            return [...data].sort((a, b) => {
-                if (b.score !== a.score) return b.score - a.score;
-                return a.time - b.time;
-            });
-        }
-
-        function renderResults(data) {
-            const grid = document.getElementById('resultsGrid');
-            grid.innerHTML = '';
-            
-            if (!data || data.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full py-16 text-center text-slate-400">
-                        <p class="text-lg font-bold">Không tìm thấy kết quả phù hợp</p>
-                        <p class="text-sm mt-1">Hãy thử gõ câu truy vấn khác xem sao.</p>
-                    </div>`;
-                document.getElementById('resultCount').textContent = 0;
-                return;
-            }
-
-            const processedData = customSort(data);
-            currentProcessedData = processedData; // Update global state
-            document.getElementById('resultCount').textContent = processedData.length;
-            
-            if (processedData.length > 0) {
-                document.getElementById('exportCsvBtn').classList.remove('hidden');
-            }
-
-            processedData.forEach((item, index) => {
-                const wrapper = document.createElement('div');
-                const animationDelay = (index % 3) * 80 + Math.floor(index / 3) * 100;
-                const floatDelay = (index % 3) * 0.5 + Math.random();
-                const rank = index + 1;
-                const submitText = `${item.video_id},${item.frame_id}`;
-                
-                wrapper.className = `animate-fade-in-up`;
-                wrapper.style.animationDelay = `${animationDelay}ms`;
-
-                let scoreClass = 'text-emerald-600 dark:text-cyan-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] dark:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]';
-                if (item.score < 75) scoreClass = 'text-amber-500 dark:text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.3)] dark:drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]';
-                if (item.score < 50) scoreClass = 'text-rose-500 dark:text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.3)] dark:drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]';
-
-                const displayObjects = item.objects && item.objects.length ? item.objects : ['keyframe'];
-
-                wrapper.innerHTML = `
-                    <div class="animate-float card-3d-hover relative w-full aspect-[4/3] bg-white dark:bg-slate-900 rounded-3xl overflow-hidden group cursor-pointer border border-slate-200 dark:border-slate-800" 
-                         style="animation-delay: ${floatDelay}s;"
-                         onclick="copyToClipboard('${submitText}', 'Thẻ #${rank}: ${submitText}')">
-                        <img src="${item.img}" alt="${item.id}" 
-                             onerror="this.onerror=null; this.src='https://via.placeholder.com/600x450?text=No+Image+Preview';"
-                             class="w-full h-full object-cover opacity-90 dark:opacity-80 group-hover:opacity-100 transition-transform duration-700 ease-out group-hover:scale-[1.08]">
-                    
-                    <!-- Top Bar: Rank # + Video ID & Frame ID -->
-                    <div class="absolute top-0 left-0 w-full bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-transparent p-3.5 flex justify-between items-center z-10">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono shadow-md">#${rank}</span>
-                            <span class="text-[11px] font-bold text-white font-mono bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm">${item.video_id}</span>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm border border-amber-400/30">
-                            Frame: ${item.frame_id}
-                        </div>
-                    </div>
-                    
-                    <!-- Metadata Overlay khi Hover -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-white/95 via-white/80 dark:from-slate-950/95 dark:via-slate-950/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-400 ease-out flex flex-col justify-end p-5 translate-y-8 group-hover:translate-y-0">
-                        
-                        <div class="flex justify-between items-end mb-3">
-                            <div class="text-xs font-mono font-bold text-slate-800 dark:text-white tracking-widest border border-slate-300 dark:border-white/20 bg-white/50 dark:bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm">
-                                ⏱️ ${formatTime(item.time)}
-                            </div>
-                            
-                            <div class="font-black text-xl ${scoreClass} font-mono tracking-tighter">
-                                ${item.score}% <span class="text-[9px] uppercase text-slate-500 dark:text-slate-400 tracking-widest block text-right mt-[-2px] drop-shadow-none">Match</span>
-                            </div>
-                        </div>
-                        
-                        ${item.ocr_text ? `
-                            <div class="mb-2 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono text-[10px] truncate flex items-center gap-1.5" title="OCR: ${item.ocr_text}">
-                                <span class="font-bold">🔤 OCR:</span> "${item.ocr_text}"
-                            </div>
-                        ` : ''}
-                        
-                        <div class="flex flex-wrap gap-1.5 mt-1 mb-3">
-                            ${displayObjects.map(obj => `
-                                <span class="bg-indigo-50 dark:bg-white/10 border border-indigo-100 dark:border-white/10 text-indigo-600 dark:text-slate-200 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-md shadow-sm backdrop-blur-md">
-                                    ${obj}
-                                </span>
-                            `).join('')}
-                        </div>
-
-                        <!-- 1-Click Copy Button -->
-                        <button type="button" class="w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold font-mono rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
-                            📋 Bấm để copy: ${submitText}
-                        </button>
-                    </div>
-                    </div>
-                `;
-                grid.appendChild(wrapper);
-            });
-        }
-
-        // --- REAL API SEARCH ACTION ---
+        // --- Perform Search ---
         async function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) return;
-
-            const topK = parseInt(document.getElementById('topKSelect').value) || 100;
             const btn = document.getElementById('searchBtn');
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 
-                             <span class="text-sm tracking-widest uppercase">Đang phân tích...</span>`;
+            const orig = btn.innerHTML;
+            const topK = parseInt(document.getElementById('topKSelect').value) || 100;
+            
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang phân tích...`;
             btn.disabled = true;
 
             try {
-                const response = await fetch(`${API_BASE}/api/v1/search/text`, {
+                let endpoint = '';
+                let payload = {};
+
+                if (_currentMode === 'kis') {
+                    const query = document.getElementById('kisInput').value.trim();
+                    if (!query) throw new Error("Vui lòng nhập câu mô tả KIS");
+                    endpoint = '/api/v1/search/kis';
+                    payload = { query: query, top_k: topK };
+                    document.getElementById('querySummary').textContent = `Query KIS: "${query}"`;
+                } else if (_currentMode === 'qa') {
+                    const query = document.getElementById('qaQueryInput').value.trim();
+                    const question = document.getElementById('qaQuestionInput').value.trim() || query;
+                    if (!query) throw new Error("Vui lòng nhập bối cảnh / câu hỏi Q&A");
+                    endpoint = '/api/v1/search/qa';
+                    payload = { query: query, question: question, top_k: topK };
+                    document.getElementById('querySummary').textContent = `Q&A: Cảnh "${query}" | Câu hỏi "${question}"`;
+                } else if (_currentMode === 'trake') {
+                    const events = getTrakeEvents();
+                    if (events.length < 2) throw new Error("Vui lòng nhập ít nhất 2 mốc sự kiện cho TRAKE");
+                    endpoint = '/api/v1/search/trake';
+                    payload = { events: events, top_k: topK };
+                    document.getElementById('querySummary').textContent = `TRAKE: ${events.join(' ➔ ')}`;
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, top_k: topK })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const err = await response.json();
-                    throw new Error(err.detail || 'Lỗi server API');
+                    throw new Error(err.detail || "Lỗi server");
                 }
 
                 const data = await response.json();
-                
-                // Map kết quả API sang định dạng UI render
-                const mappedResults = data.results.map(r => ({
-                    id: `${r.video_id} / ${r.filename}`,
-                    video_id: r.video_id,
-                    frame_id: r.frame_id ?? 0,         // ← Frame ID số nguyên (thể lệ)
-                    time: r.timestamp || 0,
-                    score: Math.round(r.score * 100),
-                    objects: r.objects || [],
-                    ocr_text: r.ocr_text || '',
-                    matched_ocr: r.matched_ocr || 0,
-                    img: `${API_BASE}/api/v1/image/${r.video_id}/${r.filename}`
-                }));
+                _currentData = data.results || [];
+                document.getElementById('resultCount').textContent = _currentData.length;
 
-                renderResults(mappedResults);
-                renderCsv(mappedResults);              // ← Cập nhật CSV panel
-                showCsvPanel();                        // ← Hiện panel lên
+                renderResults(_currentData);
+                updateCsvOutput(_currentData);
+                document.getElementById('exportCsvBtn').classList.remove('hidden');
+
             } catch (err) {
-                console.error("Lỗi truy vấn API:", err);
-                alert("❌ Không thể kết nối với Backend API!\n\nHãy đảm bảo bạn đã bật server bằng lệnh:\n  uvicorn src.backend.api:app --reload --port 8000\n\nChi tiết lỗi: " + err.message);
+                alert("❌ " + err.message);
             } finally {
-                btn.innerHTML = originalContent;
+                btn.innerHTML = orig;
                 btn.disabled = false;
             }
         }
 
         document.getElementById('searchBtn').addEventListener('click', performSearch);
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                performSearch();
+
+        // --- Render Results Based on Mode ---
+        function renderResults(data) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-20 text-center text-slate-400">
+                        <p class="text-base font-bold">Không tìm thấy kết quả phù hợp</p>
+                        <p class="text-xs mt-1">Hãy thử đổi từ khóa hoặc kiểm tra lại chuỗi sự kiện.</p>
+                    </div>`;
+                return;
             }
-        });
 
-        // --- CSV Panel & Export Modal Logic ---
-        let _csvPanelOpen = false;
-
-        function renderCsv(data) {
-            const sortedData = customSort(data);
-            // Thể lệ BTC: Tối đa 100 dòng cho mỗi file CSV
-            const top100 = sortedData.slice(0, 100);
-            const lines = top100.map(item => `${item.video_id},${item.frame_id}`);
-            const csvContent = lines.join('\n');
-            document.getElementById('csvOutput').value = csvContent;
-            document.getElementById('csvLineCount').textContent = lines.length;
-            document.getElementById('exportTextarea').value = csvContent;
-        }
-
-        function showCsvPanel() {
-            const panel = document.getElementById('csvPanel');
-            panel.classList.remove('hidden');
-            _csvPanelOpen = true;
-        }
-
-        function toggleCsvPanel() {
-            const textarea = document.getElementById('csvOutput');
-            if (_csvPanelOpen) {
-                textarea.style.display = 'none';
-                _csvPanelOpen = false;
-            } else {
-                textarea.style.display = 'block';
-                _csvPanelOpen = true;
+            if (_currentMode === 'kis') {
+                renderKisCards(data, container);
+            } else if (_currentMode === 'qa') {
+                renderQaCards(data, container);
+            } else if (_currentMode === 'trake') {
+                renderTrakeCards(data, container);
             }
         }
 
-        function copyCsv() {
-            const txt = document.getElementById('csvOutput').value;
-            if (!txt.trim()) return;
-            navigator.clipboard.writeText(txt).then(() => {
-                const btn = document.getElementById('copyAllBtn');
-                const orig = btn.innerHTML;
-                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> COPIED!';
-                btn.classList.replace('bg-emerald-500', 'bg-teal-500');
-                showToast("📋 Đã copy toàn bộ bảng CSV vào Clipboard!");
-                setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('bg-teal-500', 'bg-emerald-500'); }, 1800);
+        // 1. Render KIS
+        function renderKisCards(data, container) {
+            container.className = "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-24";
+            data.forEach((item, index) => {
+                const rank = index + 1;
+                const submitText = `${item.video_id},${item.frame_id}`;
+                const card = document.createElement('div');
+                card.className = "animate-fade-in-up card-3d-hover relative aspect-[4/3] bg-white dark:bg-slate-900 rounded-3xl overflow-hidden group border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer";
+                card.onclick = () => copyToClipboard(submitText, `Thẻ #${rank}`);
+
+                card.innerHTML = `
+                    <img src="${API_BASE}/api/v1/image/${item.video_id}/${item.filename}" 
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/600x450?text=No+Image';"
+                         class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-transform duration-500 group-hover:scale-105">
+                    
+                    <div class="absolute top-0 left-0 w-full bg-gradient-to-b from-slate-950/80 via-slate-950/30 to-transparent p-3.5 flex justify-between items-center z-10">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono shadow-md">#${rank}</span>
+                            <span class="text-[11px] font-bold text-white font-mono bg-black/50 px-2 py-0.5 rounded-md">${item.video_id}</span>
+                        </div>
+                        <span class="text-[11px] font-extrabold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md border border-amber-400/30">Frame: ${item.frame_id}</span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-4">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-xs font-mono font-bold text-white bg-black/50 px-2.5 py-1 rounded-lg">⏱️ ${formatTime(item.timestamp)}</span>
+                            <span class="text-base font-black text-cyan-400 font-mono">${Math.round(item.score * 100)}% Match</span>
+                        </div>
+                        ${item.ocr_text ? `
+                            <div class="mb-2 px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono text-[10px] truncate" title="OCR: ${item.ocr_text}">
+                                🔤 "${item.ocr_text}"
+                            </div>
+                        ` : ''}
+                        <button type="button" class="w-full py-2 bg-indigo-600 text-white text-xs font-bold font-mono rounded-xl shadow-md">
+                            📋 Copy: ${submitText}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
             });
         }
 
-        // --- Export Modal Handlers ---
+        // 2. Render Q&A
+        function renderQaCards(data, container) {
+            container.className = "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-24";
+            data.forEach((item, index) => {
+                const rank = index + 1;
+                const card = document.createElement('div');
+                card.className = "animate-fade-in-up bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md flex flex-col";
+                
+                card.innerHTML = `
+                    <div class="relative aspect-video bg-slate-950 overflow-hidden group">
+                        <img src="${API_BASE}/api/v1/image/${item.video_id}/${item.filename}" 
+                             onerror="this.onerror=null; this.src='https://via.placeholder.com/600x450?text=No+Image';"
+                             class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute top-3 left-3 flex items-center gap-2">
+                            <span class="text-xs font-black px-2 py-0.5 rounded-md bg-purple-600 text-white font-mono shadow-md">#${rank}</span>
+                            <span class="text-xs font-bold text-white font-mono bg-black/60 px-2 py-0.5 rounded-md">${item.video_id}</span>
+                        </div>
+                        <div class="absolute top-3 right-3 text-xs font-bold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md">
+                            F: ${item.frame_id}
+                        </div>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+                        <div>
+                            <div class="flex items-center justify-between text-xs font-mono text-slate-500 mb-2">
+                                <span>⏱️ ${formatTime(item.timestamp)}</span>
+                                <span class="text-purple-500 font-bold">${Math.round(item.score * 100)}% Match</span>
+                            </div>
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Đáp án (Answer):</label>
+                            <input type="text" id="ans_${index}" value="${item.answer || ''}" 
+                                oninput="updateQaAnswer(${index}, this.value)"
+                                placeholder="Gõ câu trả lời..."
+                                class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-indigo-600 dark:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                        </div>
+                        <button type="button" onclick="copyQaRow(${index})" class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold font-mono rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-1.5 shadow-md">
+                            📋 Copy Dòng Nộp Bài
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateQaAnswer(index, newAns) {
+            if (_currentData[index]) {
+                _currentData[index].answer = newAns;
+                updateCsvOutput(_currentData);
+            }
+        }
+
+        function copyQaRow(index) {
+            const item = _currentData[index];
+            if (!item) return;
+            const ans = item.answer || "";
+            const ansClean = (ans.includes(",") || ans.includes('"')) ? `"${ans.replace(/"/g, '""')}"` : (ans ? `"${ans}"` : '""');
+            const line = `${item.video_id},${item.frame_id},${ansClean}`;
+            copyToClipboard(line, `Dòng Q&A #${index+1}`);
+        }
+
+        // 3. Render TRAKE
+        function renderTrakeCards(data, container) {
+            container.className = "flex flex-col gap-6 pb-24";
+            data.forEach((item, index) => {
+                const rank = index + 1;
+                const submitText = `${item.video_id},${item.frame_ids.join(',')}`;
+                const card = document.createElement('div');
+                card.className = "animate-fade-in-up bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-md flex flex-col gap-4";
+                
+                let eventsHtml = item.events.map((ev, eIdx) => `
+                    <div class="flex-1 min-w-[200px] flex flex-col gap-2 relative">
+                        <div class="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800">
+                            <img src="${API_BASE}/api/v1/image/${item.video_id}/${ev.filename}" 
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Event+Frame';"
+                                 class="w-full h-full object-cover">
+                            <div class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-pink-600 text-white font-mono text-[10px] font-bold">
+                                Event #${eIdx + 1}
+                            </div>
+                            <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 text-amber-300 font-mono text-[10px] font-bold">
+                                F: ${ev.frame_id}
+                            </div>
+                        </div>
+                        <div class="text-xs font-mono">
+                            <p class="font-bold text-slate-700 dark:text-slate-300 truncate" title="${ev.event}">📌 ${ev.event}</p>
+                            <p class="text-slate-400 text-[10px]">⏱️ ${formatTime(ev.timestamp)}</p>
+                        </div>
+                    </div>
+                `).join('<div class="hidden md:flex items-center text-slate-400 text-lg font-bold">➔</div>');
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 gap-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-black px-2.5 py-1 rounded-lg bg-pink-600 text-white font-mono shadow-md">#${rank}</span>
+                            <span class="text-base font-extrabold font-mono text-slate-900 dark:text-white">${item.video_id}</span>
+                            <span class="text-xs font-mono text-pink-500 font-bold bg-pink-500/10 px-2.5 py-0.5 rounded-md">${item.frame_ids.length} Sự kiện tuần tự</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-mono font-bold text-cyan-400">${Math.round(item.score * 100)}% Match</span>
+                            <button type="button" onclick="copyToClipboard('${submitText}', 'TRAKE Video ${item.video_id}')" class="px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold font-mono rounded-xl shadow-md transition-transform active:scale-95">
+                                📋 Copy Chuỗi Nộp Bài
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap md:flex-nowrap items-center gap-4 overflow-x-auto py-2">
+                        ${eventsHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- CSV Generation & Modal ---
+        function updateCsvOutput(data) {
+            let lines = [];
+            const top100 = data.slice(0, 100);
+
+            if (_currentMode === 'kis') {
+                lines = top100.map(item => `${item.video_id},${item.frame_id}`);
+            } else if (_currentMode === 'qa') {
+                lines = top100.map(item => {
+                    const ans = item.answer || "";
+                    const ansClean = (ans.includes(",") || ans.includes('"')) ? `"${ans.replace(/"/g, '""')}"` : (ans ? `"${ans}"` : '""');
+                    return `${item.video_id},${item.frame_id},${ansClean}`;
+                });
+            } else if (_currentMode === 'trake') {
+                lines = top100.map(item => `${item.video_id},${item.frame_ids.join(',')}`);
+            }
+
+            const txt = lines.join('\n');
+            document.getElementById('exportTextarea').value = txt;
+            document.getElementById('modalLineCount').textContent = lines.length;
+        }
+
         function openExportModal() {
+            updateCsvOutput(_currentData);
             const modal = document.getElementById('exportModal');
             const content = document.getElementById('exportModalContent');
             modal.classList.remove('hidden');
@@ -589,15 +718,15 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'query-kis.csv';
+            a.download = `query-${_currentMode}.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showToast("💾 Đã tải xuống file query-kis.csv!");
+            showToast(`💾 Đã tải xuống file query-${_currentMode}.csv!`);
         });
 
-        // --- 1-Click Copy helper & Toast ---
+        // --- 1-Click Copy Helper & Toast ---
         function copyToClipboard(text, label) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast(`✅ Đã copy: <b>${text}</b> (${label})`);
@@ -621,21 +750,6 @@
                 toast.classList.add('translate-y-20', 'opacity-0');
             }, 2500);
         }
-
-        // Sync left của CSV panel theo resizer
-        const _origMouseMove = window.onmousemove;
-        window.addEventListener('mousemove', () => {
-            const lw = leftPanel.style.width;
-            if (lw) document.getElementById('csvPanel').style.left = lw;
-        });
-
-        // Initial empty state
-        document.getElementById('resultsGrid').innerHTML = `
-            <div class="col-span-full py-20 text-center text-slate-400">
-                <p class="text-xl font-bold">Sẵn sàng truy xuất dữ liệu AI Challenge 2026</p>
-                <p class="text-sm mt-2">Nhập từ khóa tiếng Việt hoặc tiếng Anh vào ô bên trái để tìm kiếm keyframe.</p>
-            </div>`;
-        document.getElementById('resultCount').textContent = 0;
     </script>
 </body>
 </html>

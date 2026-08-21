@@ -16,12 +16,15 @@ from typing import Optional
 from pathlib import Path
 
 from src.retrieval.retriever import Retriever
-from src.retrieval.search_pipeline import SearchPipeline, PipelineConfig, rerank_by_objects, group_temporal
+from src.retrieval.search_pipeline import (
+    SearchPipeline, PipelineConfig, rerank_by_objects, group_temporal,
+    to_kis_json, to_qa_json, to_trake_json
+)
 
 app = FastAPI(
     title="AI Challenge 2026 - Video Retrieval API",
-    description="Backend API cho tim kiem video KIS, Q&A va TRAKE",
-    version="2.0.0"
+    description="Backend API cho 3 bai toan: Textual KIS, Visual Q&A va TRAKE",
+    version="2.1.0"
 )
 
 # Cho phep UI (file:// hoac localhost) goi API
@@ -32,18 +35,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Singleton Retriever \u2014 load FAISS + CLIP 1 lan khi khoi dong
+# Singleton Retriever & SearchPipeline
 _retriever = Retriever()
+_pipeline = SearchPipeline(retriever=_retriever)
 
 
 # ============================================================
 # SCHEMAS
 # ============================================================
 
-class TextQueryRequest(BaseModel):
+class KisQueryRequest(BaseModel):
     query: str
-    top_k: Optional[int] = 20
-    session_id: Optional[str] = None    # danh cho Conversational KIS
+    top_k: Optional[int] = 100
+    session_id: Optional[str] = None
+
+
+class QaQueryRequest(BaseModel):
+    query: str
+    question: Optional[str] = None
+    top_k: Optional[int] = 100
+
+
+class TrakeQueryRequest(BaseModel):
+    events: list[str] | str
+    top_k: Optional[int] = 100
+
+
+class AnswerGenerateRequest(BaseModel):
+    video_id: str
+    filename: str
+    question: str
 
 
 # ============================================================
@@ -55,56 +76,147 @@ async def health_check():
     return {
         "status": "ok",
         "message": "AIC 2026 Retrieval API dang hoat dong",
-        "version": "2.0.0"
+        "supported_modes": ["kis", "qa", "trake"],
+        "version": "2.1.0"
     }
 
 
+# --- 1. DẠNG BÀI 1: TEXTUAL KIS ---
+@app.post("/api/v1/search/kis")
 @app.post("/api/v1/search/text")
-async def search_by_text(request: TextQueryRequest):
+async def search_kis(request: KisQueryRequest):
     """
-    Tim kiem keyframe bang text query.
-    1. CLIP encode query -> vector
-    2. FAISS search -> top-K frames
-    3. Object re-rank -> sap xep lai theo object match
+    Truy vấn Textual KIS (Known Item Search).
+    Format nộp bài CSV: <video_id>,<frame_id> (tối đa 100 dòng).
     """
     try:
-        if not request.query.strip():
-            raise HTTPException(status_code=400, detail="Query khong duoc de trong.")
+        query = request.query.strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Query không được để trống.")
 
-        # 1. FAISS search
         raw_results = _retriever.search_keyframes(
-            query_text=request.query,
-            top_k=request.top_k * 2    # lay du de re-rank
+            query_text=query,
+            top_k=min(request.top_k * 2, 200)
         )
 
-        # 2. Object re-rank (boost score neu frame co object khop query)
-        reranked = rerank_by_objects(raw_results, request.query)
-
-        # 3. Tra ve top_k ket qua cuoi
+        reranked = rerank_by_objects(raw_results, query)
         final = reranked[: request.top_k]
 
         return {
-            "status":  "success",
-            "query":   request.query,
-            "total":   len(final),
+            "status": "success",
+            "mode": "kis",
+            "query": query,
+            "total": len(final),
             "results": final,
+            "submission_csv": "\n".join(f"{r['video_id']},{r['frame_id']}" for r in final[:100])
         }
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Loi tim kiem: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm KIS: {str(e)}")
 
 
-@app.post("/api/v1/search/image")
-async def search_by_image(file: UploadFile = File(...), top_k: int = 20):
-    """Tim kiem bang anh upload. (TODO: implement CLIP image encode)"""
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Chi chap nhan file hinh anh.")
-    return {
-        "status": "todo",
-        "message": "Image search chua implement. Dang su dung text search.",
-        "results": []
-    }
+# --- 2. DẠNG BÀI 2: VISUAL QUESTION ANSWERING (Q&A) ---
+@app.post("/api/v1/search/qa")
+async def search_qa(request: QaQueryRequest):
+    """
+    Truy vấn Visual Question Answering (Q&A).
+    Format nộp bài CSV: <video_id>,<frame_id>,"<answer>" (tối đa 100 dòng).
+    """
+    try:
+        query = request.query.strip()
+        question = (request.question or query).strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Query hoặc câu hỏi không được để trống.")
+
+        raw_results = _retriever.search_keyframes(
+            query_text=query,
+            top_k=min(request.top_k * 2, 200)
+        )
+
+        reranked = rerank_by_objects(raw_results, query)
+        final = reranked[: request.top_k]
+
+        # Sinh gợi ý đáp án sơ bộ cho từng frame (dựa trên objects / OCR)
+        for r in final:
+            predicted_ans = ""
+            objs = r.get("objects", [])
+            ocr = r.get("ocr_text", "")
+            q_lower = question.lower()
+
+            if "bao nhiêu" in q_lower or "mấy" in q_lower or "count" in q_lower:
+                for target in ["người", "person", "xe", "car", "motorcycle", "chó", "dog"]:
+                    if target in q_lower:
+                        cnt = sum(1 for o in objs if target in o.lower())
+                        if cnt > 0:
+                            predicted_ans = str(cnt)
+                            break
+                if not predicted_ans and objs:
+                    predicted_ans = str(len(objs))
+            elif "chữ" in q_lower or "biển" in q_lower or "số" in q_lower or "text" in q_lower:
+                if ocr:
+                    predicted_ans = ocr[:50]
+            elif "màu" in q_lower or "color" in q_lower:
+                for color in ["đỏ", "xanh", "vàng", "trắng", "đen", "cam", "hồng", "tím"]:
+                    if color in q_lower:
+                        predicted_ans = f"Màu {color}"
+                        break
+
+            r["answer"] = predicted_ans
+
+        # Tạo CSV preview
+        csv_lines = []
+        for r in final[:100]:
+            ans = r.get("answer", "")
+            if ans and ("," in ans or '"' in ans or "\n" in ans):
+                ans_clean = f'"{ans.replace(chr(34), chr(34)+chr(34))}"'
+            elif ans:
+                ans_clean = f'"{ans}"'
+            else:
+                ans_clean = '""'
+            csv_lines.append(f"{r['video_id']},{r['frame_id']},{ans_clean}")
+
+        return {
+            "status": "success",
+            "mode": "qa",
+            "query": query,
+            "question": question,
+            "total": len(final),
+            "results": final,
+            "submission_csv": "\n".join(csv_lines)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm Q&A: {str(e)}")
+
+
+# --- 3. DẠNG BÀI 3: TRAKE (TEMPORAL ALIGNMENT) ---
+@app.post("/api/v1/search/trake")
+async def search_trake_endpoint(request: TrakeQueryRequest):
+    """
+    Truy vấn TRAKE (Temporal Retrieval and Alignment of Key Events).
+    Format nộp bài CSV: <video_id>,<frame_1>,<frame_2>,...,<frame_N> (tối đa 100 dòng).
+    """
+    try:
+        matched_videos = _pipeline.search_trake(
+            event_queries=request.events,
+            top_k=request.top_k
+        )
+
+        csv_lines = []
+        for v in matched_videos[:100]:
+            frames_str = ",".join(str(fid) for fid in v["frame_ids"])
+            csv_lines.append(f"{v['video_id']},{frames_str}")
+
+        return {
+            "status": "success",
+            "mode": "trake",
+            "events": request.events if isinstance(request.events, list) else [request.events],
+            "total": len(matched_videos),
+            "results": matched_videos,
+            "submission_csv": "\n".join(csv_lines)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm TRAKE: {str(e)}")
 
 
 @app.get("/api/v1/image/{video_id}/{filename}")

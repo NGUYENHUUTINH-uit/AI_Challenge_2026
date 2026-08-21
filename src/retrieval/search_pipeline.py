@@ -356,41 +356,101 @@ class SearchPipeline:
         return segments
 
     def search_trake(
-        self, query_text: str,
-        top_k_video: Optional[int] = None, top_k_event: Optional[int] = None,
-    ) -> dict:
-        top_k_video = top_k_video or self.config.trake_top_k_video
-        top_k_event = top_k_event or self.config.trake_top_k_event
+        self,
+        event_queries: list[str] | str,
+        top_k: int = 100,
+        top_k_candidates_per_event: int = 100,
+    ) -> list[dict]:
+        """
+        TRAKE (Temporal Retrieval and Alignment of Key Events):
+        Nhận vào danh sách N sự kiện theo thứ tự thời gian.
+        Tìm các video chứa chuỗi N sự kiện thỏa mãn: time(f_1) < time(f_2) < ... < time(f_N).
+        Trả về danh sách top_k video phù hợp nhất, mỗi video gồm danh sách N frame_ids.
+        """
+        if isinstance(event_queries, str):
+            # Tách chuỗi theo dấu -> hoặc xuống dòng hoặc dấu chấm phẩy
+            if "->" in event_queries:
+                events = [e.strip() for e in event_queries.split("->") if e.strip()]
+            elif "\n" in event_queries:
+                events = [e.strip() for e in event_queries.split("\n") if e.strip()]
+            elif ";" in event_queries:
+                events = [e.strip() for e in event_queries.split(";") if e.strip()]
+            else:
+                events = [event_queries.strip()]
+        else:
+            events = [str(e).strip() for e in event_queries if str(e).strip()]
 
-        segments = self.search_kis(query_text, top_k_video)
-        if not segments:
-            return {"video_id": None, "events": []}
-        video_id = segments[0]["video_id"]
+        if not events:
+            return []
 
-        decompose = self.event_decomposer or (lambda q: [q])
-        event_queries = decompose(query_text)
+        N = len(events)
 
-        events, last_ts = [], None
-        for eq in event_queries:
-            raw = self._raw_search(eq, top_k_event)
-            candidates = [r for r in raw if r["video_id"] == video_id]
-            for c in candidates:
-                c["_ts"] = c.get("timestamp") or float((c.get("frame_id")) or 0)
-            if last_ts is not None:
-                constrained = [c for c in candidates if c["_ts"] > last_ts]
-                if constrained:
-                    candidates = constrained
-            if not candidates:
-                events.append({"event": eq, "frame_id": None, "score": None})
-                continue
-            best = max(candidates, key=lambda c: c["score"])
-            events.append({
-                "event": eq, "frame_id": best.get("filename"),
-                "score": best["score"],
-            })
-            last_ts = best["_ts"]
+        # 1. Thu thập candidate frames cho từng event
+        event_candidates = []
+        all_video_ids = set()
 
-        return {"video_id": video_id, "events": events}
+        for eq in events:
+            raw = self._raw_search(eq, top_k=top_k_candidates_per_event)
+            raw = rerank_by_objects(raw, eq, self.config)
+            event_candidates.append(raw)
+            for r in raw:
+                all_video_ids.add(r["video_id"])
+
+        # 2. Xếp chuỗi sự kiện theo thứ tự thời gian cho từng video
+        matched_videos = []
+
+        for video_id in all_video_ids:
+            # Lấy frames của video này cho từng event
+            video_event_frames = []
+            for ev_idx in range(N):
+                cands = [r for r in event_candidates[ev_idx] if r["video_id"] == video_id]
+                for c in cands:
+                    c["_ts"] = float(c.get("timestamp") or c.get("frame_id") or 0.0)
+                # Sắp xếp theo timestamp tăng dần
+                cands.sort(key=lambda x: x["_ts"])
+                video_event_frames.append(cands)
+
+            # Quy hoạch động / Greedy tìm chuỗi N frames có t(1) < t(2) < ... < t(N)
+            chosen_sequence = []
+            last_ts = -1.0
+            valid_sequence = True
+            total_score = 0.0
+
+            for ev_idx in range(N):
+                cands = video_event_frames[ev_idx]
+                valid_cands = [c for c in cands if c["_ts"] > last_ts]
+                if not valid_cands:
+                    valid_sequence = False
+                    break
+                best_cand = max(valid_cands, key=lambda x: x["score"])
+                chosen_sequence.append(best_cand)
+                last_ts = best_cand["_ts"]
+                total_score += best_cand["score"]
+
+            if valid_sequence and len(chosen_sequence) == N:
+                avg_score = round(total_score / N, 4)
+                frame_ids = [c["frame_id"] for c in chosen_sequence]
+                filenames = [c.get("filename") for c in chosen_sequence]
+                matched_videos.append({
+                    "video_id": video_id,
+                    "frame_ids": frame_ids,
+                    "filenames": filenames,
+                    "score": avg_score,
+                    "events": [
+                        {
+                            "event": events[i],
+                            "frame_id": chosen_sequence[i]["frame_id"],
+                            "filename": chosen_sequence[i].get("filename"),
+                            "timestamp": chosen_sequence[i]["_ts"],
+                            "score": chosen_sequence[i]["score"],
+                            "image_path": chosen_sequence[i].get("image_path"),
+                        }
+                        for i in range(N)
+                    ],
+                })
+
+        matched_videos.sort(key=lambda x: -x["score"])
+        return matched_videos[:top_k]
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -403,17 +463,13 @@ def to_kis_json(segments: list[dict], max_answers: int = 100) -> list[dict]:
 
 
 def to_qa_json(segments: list[dict], max_answers: int = 100) -> list[dict]:
-    return [{"video_id": s["video_id"], "frame_id": s["frame_id"], "answer": s["answer"]}
-            for s in segments if s.get("frame_id") is not None and s.get("answer")][:max_answers]
+    return [{"video_id": s["video_id"], "frame_id": s["frame_id"], "answer": s.get("answer", "")}
+            for s in segments if s.get("frame_id") is not None][:max_answers]
 
 
-def to_trake_json(trake_result: dict) -> Optional[dict]:
-    if trake_result["video_id"] is None:
-        return None
-    frame_ids = [e["frame_id"] for e in trake_result["events"] if e["frame_id"] is not None]
-    if not frame_ids:
-        return None
-    return {"video_id": trake_result["video_id"], "frame_ids": frame_ids}
+def to_trake_json(trake_results: list[dict], max_answers: int = 100) -> list[dict]:
+    return [{"video_id": t["video_id"], "frame_ids": t["frame_ids"]}
+            for t in trake_results if t.get("video_id") and t.get("frame_ids")][:max_answers]
 
 
 if __name__ == "__main__":
