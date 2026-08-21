@@ -311,6 +311,10 @@ class Retriever:
                 n=int(n_val) if n_val is not None else None
             )
 
+            # 4b. Load OCR text (nếu có trong OCR index)
+            from src.indexing.ocr_indexer import get_ocr_indexer
+            ocr_text = get_ocr_indexer().get_text(video_id, frame_name)
+
             # 5. Image path cho UI
             img_path = str(self._keyframe_dir / video_id / frame_name)
 
@@ -321,6 +325,7 @@ class Retriever:
                 "frame_id":   frame_id,      # ← số nguyên, dùng cho CSV nộp bài
                 "score":      round(float(score), 4),
                 "objects":    objects,
+                "ocr_text":   ocr_text,
                 "image_path": img_path,
                 "scene_id":   info.get("scene_id"),
             })

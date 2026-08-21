@@ -29,16 +29,17 @@ from typing import Callable, Optional
 @dataclass
 class PipelineConfig:
     # Temporal grouping (B4)
-    base_threshold: float = 0.55
+    base_threshold: float = 0.40
     gap_tolerance: float = 2.0
     threshold_method: str = "percentile"
-    percentile: float = 80.0
-    mean_ratio: float = 0.9
+    percentile: float = 75.0
+    mean_ratio: float = 0.85
     min_segment_frames: int = 1
 
-    # Object re-ranking — dùng TRỰC TIẾP r["objects"] mà Retriever của A đã
-    # load sẵn, KHÔNG tự đọc file JSON nữa (A đã làm việc đó).
-    object_alpha: float = 0.15
+    # Multi-Modal Weights (Fusion)
+    object_alpha: float = 0.18        # Điểm thưởng cho mỗi object khớp
+    ocr_alpha: float = 0.35           # Điểm thưởng cực mạnh khi khớp chữ/số trong OCR
+    max_object_bonus: float = 0.40    # Tránh tràn điểm
 
     # Query Expansion
     query_expansion_timeout_seconds: float = 3.0
@@ -77,15 +78,6 @@ CHỈ trả về JSON array {max_variants} chuỗi, không thêm text nào khác
         return [str(v) for v in variants][:max_variants]
 
     def query_expander(query: str) -> list[str]:
-        # KHÔNG dùng "with ThreadPoolExecutor()" — khi thoát khối with, Python
-        # tự gọi shutdown(wait=True), BLOCK CHO ĐẾN KHI luồng chạy xong, dù
-        # future.result() đã timeout từ trước! Đây là lỗi timeout "giả" —
-        # phát hiện qua benchmark: cấu hình timeout=3s nhưng THỰC TẾ mất
-        # đúng bằng thời gian API bị nghẽn (vd 10s) — MẤT HẲN Ý NGHĨA bảo vệ
-        # hệ thống khi thi bấm giờ. Sửa: tạo executor thủ công, gọi
-        # shutdown(wait=False) để trả về NGAY khi timeout, không chờ luồng
-        # nền (luồng đó tự kết thúc sau, kết quả bị bỏ qua — chấp nhận được
-        # vì đây chỉ là 1 lệnh gọi API mạng, không giữ tài nguyên quan trọng).
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         future = executor.submit(_call_llm, query)
         try:
@@ -93,7 +85,7 @@ CHỈ trả về JSON array {max_variants} chuỗi, không thêm text nào khác
             executor.shutdown(wait=False)
             return result
         except concurrent.futures.TimeoutError:
-            executor.shutdown(wait=False)  # KHÔNG chờ — trả về ngay, đúng nghĩa timeout
+            executor.shutdown(wait=False)
             return []
         except Exception:
             executor.shutdown(wait=False)
@@ -103,43 +95,124 @@ CHỈ trả về JSON array {max_variants} chuỗi, không thêm text nào khác
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 2. OBJECT RE-RANKING — dùng r["objects"] Retriever của A đã load sẵn
+# 2. OBJECT & OCR RE-RANKING — TỪ ĐIỂN MỞ RỘNG + FUSION SCORE
 # ═══════════════════════════════════════════════════════════════════════
 
+# Từ điển ánh xạ tiếng Việt -> COCO & OpenImages classes
+VIETNAMESE_OBJECT_MAP = {
+    # Con người
+    "người": "person", "đàn ông": "person", "nam": "person", "phụ nữ": "person",
+    "nữ": "person", "cô gái": "person", "chàng trai": "person", "trẻ em": "person",
+    "em bé": "person", "học sinh": "person", "cảnh sát": "person", "bác sĩ": "person",
+
+    # Phương tiện giao thông
+    "xe máy": "motorcycle", "mô tô": "motorcycle", "xe gắn máy": "motorcycle",
+    "xe đạp": "bicycle", "ô tô": "car", "xe hơi": "car", "xe con": "car",
+    "xe buýt": "bus", "xe bus": "bus", "xe tải": "truck", "xe bán tải": "truck",
+    "xe cứu thương": "car", "xe taxi": "car", "máy bay": "airplane",
+    "trực thăng": "airplane", "tàu hỏa": "train", "xe lửa": "train",
+    "thuyền": "boat", "tàu thủy": "boat", "cano": "boat", "ván trượt": "skateboard",
+
+    # Động vật
+    "chó": "dog", "cún": "dog", "mèo": "cat", "chim": "bird", "bồ câu": "bird",
+    "ngựa": "horse", "bò": "cow", "trâu": "cow", "cừu": "sheep", "dê": "sheep",
+    "voi": "elephant", "gấu": "bear", "khỉ": "monkey", "hươu": "deer",
+
+    # Đồ đạc & Phụ kiện
+    "ba lô": "backpack", "balo": "backpack", "cặp": "backpack", "túi xách": "handbag",
+    "túi": "handbag", "vali": "suitcase", "ô": "umbrella", "dù": "umbrella",
+    "mũ": "hat", "nón": "hat", "kính": "glasses", "cà vạt": "tie",
+    "điện thoại": "cell phone", "laptop": "laptop", "máy tính": "laptop",
+
+    # Vật dụng trong nhà
+    "bàn": "dining table", "ghế": "chair", "ghế dài": "couch", "sofa": "couch",
+    "giường": "bed", "tivi": "tv", "tủ lạnh": "refrigerator", "đồng hồ": "clock",
+    "cốc": "cup", "ly": "cup", "chai": "bottle", "bình": "bottle", "bát": "bowl",
+    "đĩa": "bowl", "dao": "knife",
+
+    # Ngoài trời & Giao thông
+    "đèn giao thông": "traffic light", "đèn đỏ": "traffic light",
+    "biển báo": "stop sign", "cây": "tree", "cây cối": "tree",
+    "ghế đá": "bench", "thùng rác": "waste container",
+
+    # Đồ ăn
+    "bánh mì": "sandwich", "chuối": "banana", "táo": "apple", "pizza": "pizza",
+    "bánh ngọt": "cake",
+}
+
+
 def extract_query_objects(query_text: str) -> list[str]:
-    """Rule-based, MIỄN PHÍ — trích object nhắc tới trong câu query."""
+    """Trích xuất danh sách object class (tiếng Anh) từ câu query tiếng Việt."""
     if isinstance(query_text, list):
         query_text = " ".join([str(q) for q in query_text])
     
     if not isinstance(query_text, str):
         return []
+    
     query_lower = query_text.lower()
-    keyword_map = {
-        "người": "person", "đàn ông": "man", "phụ nữ": "woman",
-        "xe đạp": "bicycle", "xe hơi": "car", "ô tô": "car",
-        "chó": "dog", "mèo": "cat", "cây": "tree",
-        "xe máy": "motorcycle", "bàn": "table", "ghế": "chair",
-    }
-    return list({en for vi, en in keyword_map.items() if vi in query_lower})
+    matched_classes = set()
+
+    # Sắp xếp từ khóa dài trước để ưu tiên cụm từ (vd: "đèn giao thông" trước "đèn")
+    for vi_word in sorted(VIETNAMESE_OBJECT_MAP.keys(), key=lambda x: -len(x)):
+        if f" {vi_word} " in f" {query_lower} " or vi_word in query_lower:
+            matched_classes.add(VIETNAMESE_OBJECT_MAP[vi_word])
+
+    return list(matched_classes)
 
 
-def rerank_by_objects(raw_results: list[dict], query_text: str, cfg: PipelineConfig) -> list[dict]:
+def rerank_by_objects(raw_results: list[dict], query_text: str, cfg: Optional[PipelineConfig] = None) -> list[dict]:
     """
-    Cộng alpha vào score cho mỗi object khớp — object list LẤY TRỰC TIẾP từ
-    r["objects"] (Retriever của A đã đọc file JSON sẵn), so khớp KHÔNG phân
-    biệt hoa/thường vì BTC/YOLOv8m có thể trả nhãn khác cách viết hoa.
+    Multi-modal Score Fusion:
+    Score = Score_CLIP + (matched_objects * object_alpha) + (matched_ocr * ocr_alpha)
     """
+    if cfg is None:
+        cfg = PipelineConfig()
+
+    if not raw_results:
+        return []
+
+    # 1. Trích xuất object và OCR keywords từ query
+    from src.indexing.ocr_indexer import extract_potential_ocr_keywords, get_ocr_indexer
     query_objects = extract_query_objects(query_text)
-    if not query_objects:
-        return raw_results
+    ocr_keywords = extract_potential_ocr_keywords(query_text)
+    ocr_indexer = get_ocr_indexer()
 
     out = []
     for r in raw_results:
+        video_id = r.get("video_id", "")
+        filename = r.get("filename", "")
+
+        # A. Object Score
         frame_objects_lower = {str(o).lower() for o in r.get("objects", [])}
-        matched = sum(1 for qo in query_objects if qo in frame_objects_lower)
+        matched_obj = sum(1 for qo in query_objects if qo.lower() in frame_objects_lower)
+        obj_bonus = min(matched_obj * cfg.object_alpha, cfg.max_object_bonus)
+
+        # B. OCR Score
+        ocr_text = r.get("ocr_text") or ocr_indexer.get_text(video_id, filename)
+        ocr_bonus = 0.0
+        matched_ocr = 0
+
+        if ocr_text and ocr_keywords:
+            ocr_text_lower = ocr_text.lower()
+            for kw in ocr_keywords:
+                if kw in ocr_text_lower:
+                    matched_ocr += 1
+                    # Khớp chuẩn xác nguyên từ hoặc số
+                    if f" {kw} " in f" {ocr_text_lower} " or kw == ocr_text_lower:
+                        ocr_bonus += cfg.ocr_alpha
+                    else:
+                        ocr_bonus += cfg.ocr_alpha * 0.7
+
+        # C. Tổng hợp điểm mới
+        base_score = float(r.get("score", 0.0))
+        final_score = base_score + obj_bonus + ocr_bonus
+
         new_r = dict(r)
-        new_r["score"] = r["score"] + matched * cfg.object_alpha
-        new_r["matched_objects"] = matched
+        new_r["score"] = round(final_score, 4)
+        new_r["matched_objects"] = matched_obj
+        new_r["matched_ocr"] = matched_ocr
+        if ocr_text:
+            new_r["ocr_text"] = ocr_text
         out.append(new_r)
 
     out.sort(key=lambda x: -x["score"])
@@ -176,9 +249,11 @@ def _dynamic_threshold(scores: list[float], cfg: PipelineConfig) -> float:
     raise ValueError(f"threshold_method không hợp lệ: {cfg.threshold_method}")
 
 
-def group_temporal(raw_results: list[dict], cfg: PipelineConfig) -> list[dict]:
+def group_temporal(raw_results: list[dict], cfg: Optional[PipelineConfig] = None) -> list[dict]:
     """Gom cụm theo timestamp; nếu thiếu timestamp (None), dùng frame_id làm
     proxy thứ tự — KHÔNG loại bỏ frame chỉ vì thiếu timestamp."""
+    if cfg is None:
+        cfg = PipelineConfig()
     enriched = []
     for r in raw_results:
         ts = r.get("timestamp")

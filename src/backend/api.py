@@ -16,11 +16,11 @@ from typing import Optional
 from pathlib import Path
 
 from src.retrieval.retriever import Retriever
-from src.retrieval.rerank import rerank_by_objects
+from src.retrieval.search_pipeline import SearchPipeline, PipelineConfig, rerank_by_objects, group_temporal
 
 app = FastAPI(
     title="AI Challenge 2026 - Video Retrieval API",
-    description="Backend API cho tim kiem video KIS va Conversational KIS",
+    description="Backend API cho tim kiem video KIS, Q&A va TRAKE",
     version="2.0.0"
 )
 

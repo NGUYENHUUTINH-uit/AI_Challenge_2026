@@ -127,12 +127,22 @@
                         class="block w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-purple-500/50 text-sm transition-all shadow-inner resize-none"></textarea>
                 </div>
                 
-                <div class="flex flex-wrap gap-2">
-                    <button class="text-[10px] font-bold px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-indigo-600 dark:hover:text-cyan-300 hover:border-indigo-300 dark:hover:border-cyan-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(6,182,212,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Đường phố đêm</button>
-                    <button class="text-[10px] font-bold px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(168,85,247,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Hành động nhanh</button>
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex flex-wrap gap-2 flex-1">
+                        <button class="text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-indigo-600 dark:hover:text-cyan-300 hover:border-indigo-300 dark:hover:border-cyan-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(6,182,212,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Đường phố</button>
+                        <button class="text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/80 text-slate-500 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/80 hover:shadow-md dark:hover:shadow-[0_0_12px_rgba(168,85,247,0.5)] transition-all uppercase tracking-wider backdrop-blur-sm">Xe cộ</button>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-white/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl shadow-sm">
+                        <span class="text-[10px] font-bold uppercase text-slate-400 font-mono">Top:</span>
+                        <select id="topKSelect" class="bg-transparent text-xs font-bold font-mono text-indigo-600 dark:text-cyan-400 outline-none cursor-pointer">
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                        </select>
+                    </div>
                 </div>
 
-                <button id="searchBtn" class="mt-2 w-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-purple-600 dark:via-fuchsia-600 dark:to-pink-600 hover:from-indigo-600 hover:to-purple-700 dark:hover:from-purple-500 dark:hover:to-pink-500 text-white font-bold py-4 rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.3)] dark:shadow-[0_0_20px_rgba(192,38,211,0.3)] hover:shadow-[0_12px_25px_rgba(99,102,241,0.5)] dark:hover:shadow-[0_0_30px_rgba(192,38,211,0.6)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3">
+                <button id="searchBtn" class="mt-1 w-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-purple-600 dark:via-fuchsia-600 dark:to-pink-600 hover:from-indigo-600 hover:to-purple-700 dark:hover:from-purple-500 dark:hover:to-pink-500 text-white font-bold py-4 rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.3)] dark:shadow-[0_0_20px_rgba(192,38,211,0.3)] hover:shadow-[0_12px_25px_rgba(99,102,241,0.5)] dark:hover:shadow-[0_0_30px_rgba(192,38,211,0.6)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3">
                     <span class="tracking-widest uppercase text-sm">Truy Xuất Dữ Liệu</span>
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                 </button>
@@ -215,23 +225,31 @@
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" id="exportModalBackdrop"></div>
         
         <!-- Modal Content -->
-        <div class="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="exportModalContent">
+        <div class="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 opacity-0 transition-all duration-300 mx-4" id="exportModalContent">
             <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                    Kết Quả Nộp Bài
+                    Kết Quả Nộp Bài KIS (Tối đa 100 dòng)
                 </h3>
                 <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="p-6">
-                <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Copy toàn bộ nội dung bên dưới để nộp lên hệ thống của BTC (format: video_id, frame_id)</p>
-                <div class="relative">
-                    <textarea id="exportTextarea" rows="15" readonly class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-sm font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"></textarea>
-                    <button id="copyToClipboardBtn" class="absolute top-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-widest uppercase transition-all shadow-md flex items-center gap-2">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 font-mono">
+                    Format chuẩn BTC: <b>&lt;video_id&gt;,&lt;frame_id&gt;</b> (UTF-8, dấu phẩy, không header)
+                </p>
+                <div class="relative mb-4">
+                    <textarea id="exportTextarea" rows="12" readonly class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"></textarea>
+                </div>
+                <div class="flex items-center justify-end gap-3">
+                    <button id="downloadCsvBtn" class="px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold font-mono rounded-xl transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Tải file .CSV
+                    </button>
+                    <button id="copyToClipboardBtn" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold font-mono rounded-xl shadow-lg flex items-center gap-2 transition-transform active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        Copy
+                        Copy toàn bộ
                     </button>
                 </div>
             </div>
@@ -400,6 +418,12 @@
                             </div>
                         </div>
                         
+                        ${item.ocr_text ? `
+                            <div class="mb-2 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono text-[10px] truncate flex items-center gap-1.5" title="OCR: ${item.ocr_text}">
+                                <span class="font-bold">🔤 OCR:</span> "${item.ocr_text}"
+                            </div>
+                        ` : ''}
+                        
                         <div class="flex flex-wrap gap-1.5 mt-1 mb-3">
                             ${displayObjects.map(obj => `
                                 <span class="bg-indigo-50 dark:bg-white/10 border border-indigo-100 dark:border-white/10 text-indigo-600 dark:text-slate-200 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-md shadow-sm backdrop-blur-md">
@@ -424,6 +448,7 @@
             const query = searchInput.value.trim();
             if (!query) return;
 
+            const topK = parseInt(document.getElementById('topKSelect').value) || 100;
             const btn = document.getElementById('searchBtn');
             const originalContent = btn.innerHTML;
             btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 
@@ -434,7 +459,7 @@
                 const response = await fetch(`${API_BASE}/api/v1/search/text`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, top_k: 20 })
+                    body: JSON.stringify({ query: query, top_k: topK })
                 });
 
                 if (!response.ok) {
@@ -452,6 +477,8 @@
                     time: r.timestamp || 0,
                     score: Math.round(r.score * 100),
                     objects: r.objects || [],
+                    ocr_text: r.ocr_text || '',
+                    matched_ocr: r.matched_ocr || 0,
                     img: `${API_BASE}/api/v1/image/${r.video_id}/${r.filename}`
                 }));
 
@@ -469,20 +496,24 @@
 
         document.getElementById('searchBtn').addEventListener('click', performSearch);
         searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 performSearch();
             }
         });
 
-        // --- CSV Panel Logic ---
+        // --- CSV Panel & Export Modal Logic ---
         let _csvPanelOpen = false;
 
         function renderCsv(data) {
             const sortedData = customSort(data);
-            const lines = sortedData.map(item => `${item.video_id},${item.frame_id}`);
-            document.getElementById('csvOutput').value = lines.join('\n');
+            // Thể lệ BTC: Tối đa 100 dòng cho mỗi file CSV
+            const top100 = sortedData.slice(0, 100);
+            const lines = top100.map(item => `${item.video_id},${item.frame_id}`);
+            const csvContent = lines.join('\n');
+            document.getElementById('csvOutput').value = csvContent;
             document.getElementById('csvLineCount').textContent = lines.length;
+            document.getElementById('exportTextarea').value = csvContent;
         }
 
         function showCsvPanel() {
@@ -492,7 +523,6 @@
         }
 
         function toggleCsvPanel() {
-            const panel = document.getElementById('csvPanel');
             const textarea = document.getElementById('csvOutput');
             if (_csvPanelOpen) {
                 textarea.style.display = 'none';
@@ -515,6 +545,57 @@
                 setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('bg-teal-500', 'bg-emerald-500'); }, 1800);
             });
         }
+
+        // --- Export Modal Handlers ---
+        function openExportModal() {
+            const modal = document.getElementById('exportModal');
+            const content = document.getElementById('exportModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('exportModal');
+            const content = document.getElementById('exportModalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        document.getElementById('exportCsvBtn').addEventListener('click', openExportModal);
+        document.getElementById('closeModalBtn').addEventListener('click', closeExportModal);
+        document.getElementById('exportModalBackdrop').addEventListener('click', closeExportModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeExportModal();
+        });
+
+        document.getElementById('copyToClipboardBtn').addEventListener('click', () => {
+            const txt = document.getElementById('exportTextarea').value;
+            if (!txt.trim()) return;
+            navigator.clipboard.writeText(txt).then(() => {
+                showToast("📋 Đã copy toàn bộ danh sách CSV vào Clipboard!");
+            });
+        });
+
+        document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+            const txt = document.getElementById('exportTextarea').value;
+            if (!txt.trim()) return;
+            const blob = new Blob([txt], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'query-kis.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("💾 Đã tải xuống file query-kis.csv!");
+        });
 
         // --- 1-Click Copy helper & Toast ---
         function copyToClipboard(text, label) {
