@@ -54,6 +54,7 @@ class QaQueryRequest(BaseModel):
     query: str
     question: Optional[str] = None
     top_k: Optional[int] = 100
+    gemini_api_key: Optional[str] = None
 
 
 class TrakeQueryRequest(BaseModel):
@@ -65,6 +66,7 @@ class AnswerGenerateRequest(BaseModel):
     video_id: str
     filename: str
     question: str
+    gemini_api_key: Optional[str] = None
 
 
 # ============================================================
@@ -124,6 +126,7 @@ async def search_qa(request: QaQueryRequest):
     Format nộp bài CSV: <video_id>,<frame_id>,"<answer>" (tối đa 100 dòng).
     """
     try:
+        from src.retrieval.vlm_qa import get_vqa_answer
         query = request.query.strip()
         question = (request.question or query).strip()
         if not query:
@@ -137,32 +140,23 @@ async def search_qa(request: QaQueryRequest):
         reranked = rerank_by_objects(raw_results, query)
         final = reranked[: request.top_k]
 
-        # Sinh gợi ý đáp án sơ bộ cho từng frame (dựa trên objects / OCR)
-        for r in final:
-            predicted_ans = ""
+        # Sinh đáp án tự động (ưu tiên Gemini Vision cho top 5, heuristic cho các frame còn lại để tối ưu tốc độ)
+        for idx, r in enumerate(final):
+            img_path = r.get("image_path")
             objs = r.get("objects", [])
             ocr = r.get("ocr_text", "")
-            q_lower = question.lower()
-
-            if "bao nhiêu" in q_lower or "mấy" in q_lower or "count" in q_lower:
-                for target in ["người", "person", "xe", "car", "motorcycle", "chó", "dog"]:
-                    if target in q_lower:
-                        cnt = sum(1 for o in objs if target in o.lower())
-                        if cnt > 0:
-                            predicted_ans = str(cnt)
-                            break
-                if not predicted_ans and objs:
-                    predicted_ans = str(len(objs))
-            elif "chữ" in q_lower or "biển" in q_lower or "số" in q_lower or "text" in q_lower:
-                if ocr:
-                    predicted_ans = ocr[:50]
-            elif "màu" in q_lower or "color" in q_lower:
-                for color in ["đỏ", "xanh", "vàng", "trắng", "đen", "cam", "hồng", "tím"]:
-                    if color in q_lower:
-                        predicted_ans = f"Màu {color}"
-                        break
-
-            r["answer"] = predicted_ans
+            
+            # Chỉ gọi API Gemini tự động cho top 3 frame đầu để tiết kiệm quota & độ trễ, các frame sau dùng heuristic
+            api_key = request.gemini_api_key if idx < 3 else None
+            
+            ans = get_vqa_answer(
+                image_path=img_path,
+                question=question,
+                objects=objs,
+                ocr_text=ocr,
+                api_key=api_key
+            )
+            r["answer"] = ans
 
         # Tạo CSV preview
         csv_lines = []
@@ -187,6 +181,42 @@ async def search_qa(request: QaQueryRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm Q&A: {str(e)}")
+
+
+@app.post("/api/v1/qa/answer")
+async def generate_single_answer(request: AnswerGenerateRequest):
+    """
+    Sinh câu trả lời Vision VLM trực tiếp cho 1 keyframe cụ thể theo yêu cầu của người dùng.
+    """
+    try:
+        from src.retrieval.vlm_qa import get_vqa_answer
+        PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+        BTC_DIR      = PROJECT_ROOT / "data" / "btc"
+        DATA_DIR     = PROJECT_ROOT / "data" / "processed"
+
+        # Tìm đường dẫn ảnh thật
+        img_path = None
+        for candidate_dir in [BTC_DIR / "Keyframes", DATA_DIR / "keyframes", DATA_DIR / "keyframes_clean"]:
+            p = candidate_dir / request.video_id / request.filename
+            if p.exists():
+                img_path = p
+                break
+
+        ans = get_vqa_answer(
+            image_path=img_path,
+            question=request.question,
+            api_key=request.gemini_api_key
+        )
+
+        return {
+            "status": "success",
+            "video_id": request.video_id,
+            "filename": request.filename,
+            "question": request.question,
+            "answer": ans or "Không thể xác định"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi sinh đáp án: {str(e)}")
 
 
 # --- 3. DẠNG BÀI 3: TRAKE (TEMPORAL ALIGNMENT) ---

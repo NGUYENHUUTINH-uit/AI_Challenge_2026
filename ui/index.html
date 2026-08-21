@@ -153,6 +153,12 @@
                 <input id="qaQuestionInput" type="text" placeholder="Câu hỏi (vd: Có bao nhiêu chiếc xe?, Áo màu gì?)..."
                     class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all placeholder-slate-400 dark:placeholder-slate-600">
 
+                <div class="flex items-center gap-2 bg-purple-500/5 border border-purple-500/20 px-3 py-2 rounded-xl">
+                    <span class="text-xs">🔑</span>
+                    <input id="geminiApiKeyInput" type="password" placeholder="Gemini API Key (Tùy chọn cho VLM Vision)..." 
+                        class="w-full bg-transparent text-xs font-mono outline-none text-purple-600 dark:text-purple-300 placeholder-slate-400">
+                </div>
+
                 <div class="flex flex-wrap gap-1.5">
                     <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('qa', 'xe ô tô đậu ven đường', 'Có bao nhiêu xe ô tô?')">Đếm xe ô tô</button>
                     <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('qa', 'người đàn ông đang cầm micro', 'Chiếc áo màu gì?')">Hỏi màu áo</button>
@@ -438,9 +444,11 @@
                 } else if (_currentMode === 'qa') {
                     const query = document.getElementById('qaQueryInput').value.trim();
                     const question = document.getElementById('qaQuestionInput').value.trim() || query;
+                    const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
+                    if (apiKey) localStorage.gemini_api_key = apiKey;
                     if (!query) throw new Error("Vui lòng nhập bối cảnh / câu hỏi Q&A");
                     endpoint = '/api/v1/search/qa';
-                    payload = { query: query, question: question, top_k: topK };
+                    payload = { query: query, question: question, top_k: topK, gemini_api_key: apiKey || null };
                     document.getElementById('querySummary').textContent = `Q&A: Cảnh "${query}" | Câu hỏi "${question}"`;
                 } else if (_currentMode === 'trake') {
                     const events = getTrakeEvents();
@@ -572,10 +580,15 @@
                                 <span class="text-purple-500 font-bold">${Math.round(item.score * 100)}% Match</span>
                             </div>
                             <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Đáp án (Answer):</label>
-                            <input type="text" id="ans_${index}" value="${item.answer || ''}" 
-                                oninput="updateQaAnswer(${index}, this.value)"
-                                placeholder="Gõ câu trả lời..."
-                                class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-indigo-600 dark:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                            <div class="flex items-center gap-1.5">
+                                <input type="text" id="ans_${index}" value="${item.answer || ''}" 
+                                    oninput="updateQaAnswer(${index}, this.value)"
+                                    placeholder="Gõ hoặc bấm AI trả lời..."
+                                    class="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-indigo-600 dark:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                                <button type="button" onclick="askAiForFrame(${index}, this)" title="Gọi Gemini Vision phân tích ảnh này" class="px-2.5 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1">
+                                    ✨ AI
+                                </button>
+                            </div>
                         </div>
                         <button type="button" onclick="copyQaRow(${index})" class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold font-mono rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-1.5 shadow-md">
                             📋 Copy Dòng Nộp Bài
@@ -584,6 +597,42 @@
                 `;
                 container.appendChild(card);
             });
+        }
+
+        async function askAiForFrame(index, btn) {
+            const item = _currentData[index];
+            if (!item) return;
+            const question = document.getElementById('qaQuestionInput').value.trim() || document.getElementById('qaQueryInput').value.trim();
+            const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
+            if (apiKey) localStorage.gemini_api_key = apiKey;
+
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = `<span class="animate-spin">⏳</span>`;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/qa/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        video_id: item.video_id,
+                        filename: item.filename,
+                        question: question,
+                        gemini_api_key: apiKey || null
+                    })
+                });
+                const data = await response.json();
+                if (data.answer) {
+                    document.getElementById(`ans_${index}`).value = data.answer;
+                    updateQaAnswer(index, data.answer);
+                    showToast(`✨ AI đã trả lời: <b>"${data.answer}"</b>`);
+                }
+            } catch (e) {
+                showToast(`❌ Lỗi gọi AI: ${e.message}`);
+            } finally {
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
+            }
         }
 
         function updateQaAnswer(index, newAns) {
@@ -749,6 +798,12 @@
             toast._timer = setTimeout(() => {
                 toast.classList.add('translate-y-20', 'opacity-0');
             }, 2500);
+        }
+
+        // Restore saved Gemini API Key
+        if (localStorage.gemini_api_key) {
+            const keyInp = document.getElementById('geminiApiKeyInput');
+            if (keyInp) keyInp.value = localStorage.gemini_api_key;
         }
     </script>
 </body>
