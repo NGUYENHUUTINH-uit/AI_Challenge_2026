@@ -46,6 +46,10 @@ BTC_OBJECTS_DIR = BTC_DIR  / "Objects"           # BTC cấp (Faster R-CNN Open 
 def _is_vietnamese(text: str) -> bool:
     """Phát hiện tiếng Việt bằng cách kiểm tra các dấu thanh đặc trưng."""
     import unicodedata
+
+    if not isinstance(text, str):
+        return False
+    
     for ch in text:
         name = unicodedata.name(ch, "")
         # Tiếng Việt có combining tone marks (COMBINING GRAVE/ACUTE/HOOK/TILDE/DOT)
@@ -164,7 +168,15 @@ class Retriever:
                     text=[query], return_tensors="pt",
                     padding=True, truncation=True
                 ).to(self._device)
+                
+                # Sửa tại đây: Gọi thẳng hàm lấy text features của mô hình HuggingFace CLIP
                 feat = self._model.get_text_features(**inputs)
+                
+                # Phòng hờ nếu trả về object bọc bên ngoài
+                if hasattr(feat, "pooler_output"):
+                    feat = feat.pooler_output
+                elif hasattr(feat, "text_embeds"):
+                    feat = feat.text_embeds
 
             feat = feat / feat.norm(dim=-1, keepdim=True)  # L2 normalize
         return feat.cpu().numpy().astype(np.float32)
