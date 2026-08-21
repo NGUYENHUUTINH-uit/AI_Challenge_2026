@@ -56,21 +56,18 @@ OUTPUT_OBJ_CACHE = OUTPUT_DIR / "objects_cache_btc.json"   # cache objects da lo
 # ============================================================
 
 def load_objects_for_video(video_id: str,
-                           objects_dir: Path = OBJECTS_DIR) -> dict:
+                           objects_dir: Path = OBJECTS_DIR,
+                           fallback_dir: Path = OUTPUT_DIR / "objects") -> dict:
     """
-    Load tat ca object detection cua 1 video tu thu muc Objects cua BTC.
-    BTC format: Objects/<video_id>/<frame_name>.json
-    Moi file JSON chua list cac detected objects (Faster R-CNN OpenImages V4).
-
-    Returns:
-        { "0000": ["person", "car", ...], "0001": [...], ... }
-        Key la ten file keyframe (khong co .jpg), value la list ten class.
-
-    Vi du:
-        objs = load_objects_for_video("L21_V001")
-        print(objs["0001"])  # -> ["person", "bicycle"]
+    Load tat ca object detection cua 1 video:
+    1. Uu tien doc tu data/btc/Objects/<video_id>/ (format BTC - Faster R-CNN)
+    2. Fallback doc tu data/processed/objects/<video_id>/ (format YOLOv8m do nhom detect)
     """
     video_obj_dir = objects_dir / video_id
+    if not video_obj_dir.exists():
+        # Fallback sang thu muc YOLOv8 do nhom detect
+        video_obj_dir = fallback_dir / video_id
+
     if not video_obj_dir.exists():
         return {}
 

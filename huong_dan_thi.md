@@ -151,7 +151,7 @@ cd d:\AIC_2026\AI_Challenge_2026
 python -c "
 import zipfile
 from pathlib import Path
-lesson = 'L29'
+lesson = 'L26'
 kf_dir = Path('data/btc/Keyframes')
 with zipfile.ZipFile(f'keyframes_{lesson}.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
     for vd in kf_dir.iterdir():
@@ -266,7 +266,7 @@ print("-> Doi LESSON o Cell 2 va chay lai tu Cell 2")
 
 ```powershell
 # Thay <LXX> bang lesson vua detect xong
-Expand-Archive -Path "objects_<LXX>.zip" -DestinationPath "data\processed\" -Force
+Expand-Archive -Path "objects_L30.zip" -DestinationPath "data\processed\" -Force
 ```
 
 **Kết quả cuối trong `data/processed/`:**

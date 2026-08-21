@@ -260,16 +260,20 @@ class Retriever:
 
             info = self._frame_map.get(str(faiss_idx), {})
 
-            # Lấy filename: nếu không có key 'filename', format từ n (n-1:04d.jpg) hoặc frame_idx
+            # Lấy filename: ưu tiên 'filename', nếu không format từ n (BTC: 001.jpg, self: 0000.jpg)
             filename = info.get("filename")
             if not filename:
-                n_val = info.get("n", 1)
-                filename = f"{int(n_val) - 1:04d}.jpg"
+                n_val = info.get("n")
+                if n_val is not None:
+                    filename = f"{int(n_val):03d}.jpg"
+                else:
+                    frame_idx_val = info.get("frame_idx", 0)
+                    filename = f"{int(frame_idx_val):04d}.jpg"
 
             video_id = info.get("video_id") or (
                 filename.split("/")[0] if "/" in filename else "unknown"
             )
-            frame_name = Path(filename).name    # "0042.jpg"
+            frame_name = Path(filename).name    # "001.jpg" hoặc "0000.jpg"
 
             # Lấy timestamp (giây float): ưu tiên 'timestamp', fallback 'pts_time'
             timestamp = info.get("timestamp")

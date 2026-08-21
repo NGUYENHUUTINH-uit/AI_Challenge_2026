@@ -111,22 +111,46 @@ async def search_by_image(file: UploadFile = File(...), top_k: int = 20):
 async def serve_keyframe(video_id: str, filename: str):
     """
     Phuc vu file anh keyframe cho UI hien thi.
-    URL: /api/v1/image/L25_V001/0042.jpg
+    Tu dong tim kiem cac bien the ten file (001.jpg, 0001.jpg, 0000.jpg...)
     """
-    # Thu tu cac thu muc keyframe theo do uu tien
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     DATA_DIR     = PROJECT_ROOT / "data" / "processed"
     BTC_DIR      = PROJECT_ROOT / "data" / "btc"
 
-    candidates = [
-        BTC_DIR  / "Keyframes"       / video_id / filename,   # BTC data (uu tien)
-        DATA_DIR / "keyframes"       / video_id / filename,
-        DATA_DIR / "keyframes_clean" / video_id / filename,
+    # Danh sach cac thu muc chua keyframe
+    search_dirs = [
+        BTC_DIR  / "Keyframes"       / video_id,
+        DATA_DIR / "keyframes"       / video_id,
+        DATA_DIR / "keyframes_clean" / video_id,
     ]
 
-    for img_path in candidates:
-        if img_path.exists():
-            return FileResponse(str(img_path), media_type="image/jpeg")
+    # Tao danh sach cac bien the ten file co the co
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix or ".jpg"
+    name_variants = [filename]
+
+    try:
+        idx = int(stem)
+        name_variants.extend([
+            f"{idx:03d}{suffix}",      # BTC format: 001.jpg
+            f"{idx:04d}{suffix}",      # 4-digit: 0001.jpg
+            f"{idx + 1:03d}{suffix}",  # neu request 0-indexed (0000 -> 001.jpg)
+            f"{idx + 1:04d}{suffix}",
+            f"{idx - 1:03d}{suffix}",  # neu request 1-indexed (001 -> 000.jpg)
+            f"{idx - 1:04d}{suffix}",
+            f"{idx}{suffix}",
+        ])
+    except ValueError:
+        pass
+
+    # Tim kiem file theo thu tu
+    for vdir in search_dirs:
+        if not vdir.exists():
+            continue
+        for name in name_variants:
+            img_path = vdir / name
+            if img_path.exists() and img_path.is_file():
+                return FileResponse(str(img_path), media_type="image/jpeg")
 
     raise HTTPException(
         status_code=404,
