@@ -15,6 +15,9 @@ import re
 from pathlib import Path
 from typing import Optional, Dict
 from PIL import Image
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Cache lưu trữ câu trả lời: {(image_path_str, question): answer}
 _QA_CACHE: Dict[tuple, str] = {}
@@ -46,10 +49,11 @@ def answer_question_gemini(
     image_path: str | Path,
     question: str,
     api_key: Optional[str] = None,
-    model_name: str = "gemini-2.5-flash"
+    model_name: Optional[str] = None
 ) -> Optional[str]:
     """
     Sử dụng Gemini Vision để trả lời câu hỏi dựa trên ảnh keyframe.
+    Tự động thử lần lượt các model siêu nhanh: gemini-2.5-flash -> gemini-2.0-flash -> gemini-1.5-flash.
     """
     key = api_key or os.getenv("GEMINI_API_KEY")
     if not key:
@@ -81,17 +85,28 @@ YÊU CẦU BẮT BUỘC:
 4. Nếu hỏi chữ/biển số: CHỈ trả về chính xác nội dung chữ viết.
 5. KHÔNG giải thích dài dòng, KHÔNG chào hỏi, KHÔNG dùng tiền tố như 'Đáp án là'."""
 
-        response = client.models.generate_content(
-            model=model_name,
-            contents=[pil_img, prompt]
-        )
+        # Danh sách các model thử nghiệm theo thứ tự ưu tiên tốc độ & độ ổn định
+        candidate_models = [model_name] if model_name else []
+        candidate_models += ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
-        ans = clean_vqa_answer(response.text)
-        if ans:
-            _QA_CACHE[cache_key] = ans
-            return ans
+        for mdl in candidate_models:
+            if not mdl:
+                continue
+            try:
+                response = client.models.generate_content(
+                    model=mdl,
+                    contents=[pil_img, prompt]
+                )
+                ans = clean_vqa_answer(response.text)
+                if ans:
+                    _QA_CACHE[cache_key] = ans
+                    return ans
+            except Exception as model_err:
+                # Thử model tiếp theo nếu model này không tồn tại / quá tải
+                continue
+
     except Exception as e:
-        print(f"⚠️ Lỗi gọi Gemini VLM: {e}")
+        print(f"⚠️ Lỗi khởi tạo Gemini VLM: {e}")
 
     return None
 

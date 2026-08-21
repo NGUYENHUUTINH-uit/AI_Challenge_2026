@@ -266,7 +266,7 @@ print("-> Doi LESSON o Cell 2 va chay lai tu Cell 2")
 
 ```powershell
 # Thay <LXX> bang lesson vua detect xong
-Expand-Archive -Path "objects_L30.zip" -DestinationPath "data\processed\" -Force
+Expand-Archive -Path "objects_LXX.zip" -DestinationPath "data\processed\" -Force
 ```
 
 **Kết quả cuối trong `data/processed/`:**

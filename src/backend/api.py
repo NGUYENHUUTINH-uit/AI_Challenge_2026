@@ -8,12 +8,17 @@ Endpoints:
   GET  /api/v1/image/{path}    phuc vu anh keyframe cho UI
 """
 
+import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Tự động nạp các biến môi trường từ file .env
+load_dotenv()
 
 from src.retrieval.retriever import Retriever
 from src.retrieval.search_pipeline import (
@@ -140,14 +145,14 @@ async def search_qa(request: QaQueryRequest):
         reranked = rerank_by_objects(raw_results, query)
         final = reranked[: request.top_k]
 
-        # Sinh đáp án tự động (ưu tiên Gemini Vision cho top 5, heuristic cho các frame còn lại để tối ưu tốc độ)
+        # Sinh đáp án: Top 1 gọi Gemini Vision trực tiếp, các frame còn lại dùng Heuristic siêu nhanh (0.01s)
+        # Người dùng có thể bấm '✨ AI' trên bất kỳ thẻ nào để Gemini trả lời riêng cho thẻ đó
         for idx, r in enumerate(final):
             img_path = r.get("image_path")
             objs = r.get("objects", [])
             ocr = r.get("ocr_text", "")
             
-            # Chỉ gọi API Gemini tự động cho top 3 frame đầu để tiết kiệm quota & độ trễ, các frame sau dùng heuristic
-            api_key = request.gemini_api_key if idx < 3 else None
+            api_key = (request.gemini_api_key or os.getenv("GEMINI_API_KEY")) if idx == 0 else None
             
             ans = get_vqa_answer(
                 image_path=img_path,
