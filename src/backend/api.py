@@ -130,14 +130,14 @@ async def search_kis(request: KisQueryRequest):
         expanded_info = None
         search_prompt = query
 
-        # Tự động mở rộng & suy luận nếu câu văn dài (> 6 từ) hoặc có cấu trúc phức tạp
-        if request.auto_expand and (len(query.split()) > 6 or request.gemini_api_key or os.getenv("GEMINI_API_KEY")):
+        # Tự động mở rộng & suy luận nếu câu văn là một đoạn truyện/đố mẹo dài (> 14 từ)
+        if request.auto_expand and len(query.split()) > 14:
             try:
                 expanded_info = get_expanded_query(query, api_key=request.gemini_api_key)
                 if expanded_info and expanded_info.get("visual_prompt_en"):
                     search_prompt = expanded_info["visual_prompt_en"]
             except Exception as exp_err:
-                print(f"⚠️ Query expansion fallback: {exp_err}")
+                pass
 
         raw_results = _retriever.search_keyframes(
             query_text=search_prompt,

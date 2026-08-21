@@ -69,8 +69,7 @@ _TRANS_CACHE: dict = {}
 
 def _translate_vi_to_en(text: str) -> str:
     """
-    Dịch tiếng Việt → tiếng Anh với cache và ưu tiên Gemini 3.6 Flash siêu tốc (0.15s).
-    Fallback sang GoogleTranslator hoặc text gốc nếu lỗi.
+    Dịch tiếng Việt → tiếng Anh chính xác và trung thực (Literal translation).
     """
     if not text:
         return ""
@@ -86,12 +85,11 @@ def _translate_vi_to_en(text: str) -> str:
             client = genai.Client(api_key=gemini_key)
             r = client.models.generate_content(
                 model="gemini-3.6-flash",
-                contents=f"Translate this Vietnamese video retrieval query to a short English visual search phrase (max 15 words). Return ONLY the translated English phrase:\n\"{text_clean}\""
+                contents=f"Translate the following Vietnamese text to English literally and accurately for video search. Return ONLY the direct English translation without extra words or quotes:\n\"{text_clean}\""
             )
-            trans = r.text.strip().strip('"').strip("'")
-            if trans:
+            trans = r.text.strip().strip('"').strip("'").strip("`")
+            if trans and len(trans) > 1:
                 _TRANS_CACHE[text_clean] = trans
-                print(f"[Trans-AI] Việt: '{text_clean}' → Anh: '{trans}'")
                 return trans
         except Exception:
             pass
@@ -100,10 +98,8 @@ def _translate_vi_to_en(text: str) -> str:
         from deep_translator import GoogleTranslator
         translated = GoogleTranslator(source='vi', target='en').translate(text_clean)
         _TRANS_CACHE[text_clean] = translated
-        print(f"[Trans-Web] Việt: '{text_clean}' → Anh: '{translated}'")
         return translated
-    except Exception as e:
-        print(f"[Trans] Không thể dịch (offline?): {e} — dùng query gốc")
+    except Exception:
         return text_clean
 
 class Retriever:
