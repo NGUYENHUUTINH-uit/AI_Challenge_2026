@@ -53,6 +53,8 @@ class KisQueryRequest(BaseModel):
     query: str
     top_k: Optional[int] = 100
     session_id: Optional[str] = None
+    auto_expand: Optional[bool] = True
+    gemini_api_key: Optional[str] = None
 
 
 class QaQueryRequest(BaseModel):
@@ -74,6 +76,11 @@ class AnswerGenerateRequest(BaseModel):
     gemini_api_key: Optional[str] = None
 
 
+class QueryExpandRequest(BaseModel):
+    query: str
+    gemini_api_key: Optional[str] = None
+
+
 # ============================================================
 # ENDPOINTS
 # ============================================================
@@ -88,21 +95,52 @@ async def health_check():
     }
 
 
+@app.post("/api/v1/query/expand")
+async def expand_query_endpoint(request: QueryExpandRequest):
+    """
+    Sử dụng LLM Reasoning để phân tích câu đố mẹo hoặc câu văn dài,
+    chuyển thành Visual Prompt tiếng Anh tối ưu cho mô hình CLIP.
+    """
+    try:
+        from src.retrieval.query_expander import get_expanded_query
+        res = get_expanded_query(request.query, api_key=request.gemini_api_key)
+        return {
+            "status": "success",
+            "original_query": request.query,
+            **res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tối ưu truy vấn: {str(e)}")
+
+
 # --- 1. DẠNG BÀI 1: TEXTUAL KIS ---
 @app.post("/api/v1/search/kis")
 @app.post("/api/v1/search/text")
 async def search_kis(request: KisQueryRequest):
     """
-    Truy vấn Textual KIS (Known Item Search).
+    Truy vấn Textual KIS (Known Item Search) với hỗ trợ LLM Visual Reasoning.
     Format nộp bài CSV: <video_id>,<frame_id> (tối đa 100 dòng).
     """
     try:
+        from src.retrieval.query_expander import get_expanded_query
         query = request.query.strip()
         if not query:
             raise HTTPException(status_code=400, detail="Query không được để trống.")
 
+        expanded_info = None
+        search_prompt = query
+
+        # Tự động mở rộng & suy luận nếu câu văn dài (> 6 từ) hoặc có cấu trúc phức tạp
+        if request.auto_expand and (len(query.split()) > 6 or request.gemini_api_key or os.getenv("GEMINI_API_KEY")):
+            try:
+                expanded_info = get_expanded_query(query, api_key=request.gemini_api_key)
+                if expanded_info and expanded_info.get("visual_prompt_en"):
+                    search_prompt = expanded_info["visual_prompt_en"]
+            except Exception as exp_err:
+                print(f"⚠️ Query expansion fallback: {exp_err}")
+
         raw_results = _retriever.search_keyframes(
-            query_text=query,
+            query_text=search_prompt,
             top_k=min(request.top_k * 2, 200)
         )
 
@@ -113,6 +151,8 @@ async def search_kis(request: KisQueryRequest):
             "status": "success",
             "mode": "kis",
             "query": query,
+            "search_prompt_used": search_prompt,
+            "expanded_info": expanded_info,
             "total": len(final),
             "results": final,
             "submission_csv": "\n".join(f"{r['video_id']},{r['frame_id']}" for r in final[:100])
@@ -145,21 +185,16 @@ async def search_qa(request: QaQueryRequest):
         reranked = rerank_by_objects(raw_results, query)
         final = reranked[: request.top_k]
 
-        # Sinh đáp án: Top 1 gọi Gemini Vision trực tiếp, các frame còn lại dùng Heuristic siêu nhanh (0.01s)
-        # Người dùng có thể bấm '✨ AI' trên bất kỳ thẻ nào để Gemini trả lời riêng cho thẻ đó
-        for idx, r in enumerate(final):
-            img_path = r.get("image_path")
+        # Sinh gợi ý đáp án sơ bộ bằng Heuristic siêu tốc (<0.005s) để trả về UI tức thì
+        for r in final:
             objs = r.get("objects", [])
             ocr = r.get("ocr_text", "")
-            
-            api_key = (request.gemini_api_key or os.getenv("GEMINI_API_KEY")) if idx == 0 else None
-            
             ans = get_vqa_answer(
-                image_path=img_path,
+                image_path=None,
                 question=question,
                 objects=objs,
                 ocr_text=ocr,
-                api_key=api_key
+                api_key=None
             )
             r["answer"] = ans
 
