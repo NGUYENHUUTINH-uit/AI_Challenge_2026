@@ -272,11 +272,32 @@ class Retriever:
         else:
             return []
 
-        # 2. FAISS search (nếu có filter video thì lấy nhiều hơn để lọc)
-        fetch_k = top_k * 5 if video_filter else top_k
-        scores, indices = self._index.search(query_vec, min(fetch_k, self._index.ntotal))
-        scores  = scores[0].tolist()
-        indices = indices[0].tolist()
+        # 2. Xử lý trường hợp lọc theo 1 video cụ thể (Exact Subset Ranking)
+        if video_filter:
+            v_clean = video_filter.strip().upper()
+            target_indices = []
+            for idx_str, info in self._frame_map.items():
+                if (info.get("video_id") or "").strip().upper() == v_clean:
+                    target_indices.append(int(idx_str))
+
+            if not target_indices:
+                return []
+
+            # Reconstruct toàn bộ vector của video này và tính dot product siêu tốc (<0.005s)
+            vecs = np.zeros((len(target_indices), 512), dtype=np.float32)
+            for i, f_idx in enumerate(target_indices):
+                vecs[i] = self._index.reconstruct(f_idx)
+
+            sub_scores = np.dot(vecs, query_vec[0])
+            sorted_order = np.argsort(-sub_scores)
+
+            scores = [float(sub_scores[i]) for i in sorted_order[:top_k]]
+            indices = [target_indices[i] for i in sorted_order[:top_k]]
+        else:
+            # 2b. FAISS search toàn cục
+            scores, indices = self._index.search(query_vec, top_k)
+            scores  = scores[0].tolist()
+            indices = indices[0].tolist()
 
         # 3. Map FAISS index → thông tin frame
         results = []
@@ -298,10 +319,6 @@ class Retriever:
             video_id = info.get("video_id") or (
                 filename.split("/")[0] if "/" in filename else "unknown"
             )
-
-            # Lọc theo video nếu có yêu cầu
-            if video_filter and video_id.strip().upper() != video_filter.strip().upper():
-                continue
 
             frame_name = Path(filename).name
 
