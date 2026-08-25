@@ -240,11 +240,11 @@ class Retriever:
             list of dict:
             {
               "video_id":   "L25_V001",
-              "filename":   "0042.jpg",
+              "filename":   "042.jpg",
               "timestamp":  12.48,
               "score":      0.87,
               "objects":    ["person", "car"],
-              "image_path": "data/processed/keyframes/L25_V001/0042.jpg"
+              "image_path": "data/processed/keyframes/L25_V001/042.jpg"
             }
         """
         self._ensure_loaded()
@@ -276,12 +276,12 @@ class Retriever:
             filename = info.get("filename")
             if not filename:
                 n_val = info.get("n", 1)
-                filename = f"{int(n_val) - 1:04d}.jpg"
+                filename = f"{int(n_val) - 1:03d}.jpg"
 
             video_id = info.get("video_id") or (
                 filename.split("/")[0] if "/" in filename else "unknown"
             )
-            frame_name = Path(filename).name    # "0042.jpg"
+            frame_name = Path(filename).name    # "042.jpg"
 
             # Lấy timestamp: ưu tiên 'timestamp', fallback 'pts_time'
             timestamp = info.get("timestamp")

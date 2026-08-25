@@ -378,9 +378,27 @@ def to_kis_json(segments: list[dict], max_answers: int = 100) -> list[dict]:
             for s in segments if s.get("frame_id") is not None][:max_answers]
 
 
-def to_qa_json(segments: list[dict], max_answers: int = 100) -> list[dict]:
-    return [{"video_id": s["video_id"], "frame_id": s["frame_id"], "answer": s["answer"]}
-            for s in segments if s.get("frame_id") is not None and s.get("answer")][:max_answers]
+def to_qa_json(segments: list[dict], max_answers: int = 10) -> list[dict]:
+    out = []
+    for s in segments:
+        # Lấy fallback filename nếu frame_id bị None
+        fid = s.get("frame_id")
+        if fid is None:
+            fid = s.get("filename")
+            
+        ans = s.get("answer", "Không có câu trả lời từ AI")
+        
+        # Chỉ cần có video_id là giữ lại để hiển thị test
+        if s.get("video_id") and fid:
+            out.append({
+                "video_id": s["video_id"], 
+                "frame_id": fid, 
+                "answer": ans
+            })
+            
+        if len(out) >= max_answers:
+            break
+    return out
 
 
 def to_trake_json(trake_result: dict) -> Optional[dict]:
@@ -427,23 +445,32 @@ if __name__ == "__main__":
             t0 = time.time()
             kis_results = pipeline.search_kis(q_vi, top_k=50)
             print(f"⏱️ Thời gian: {time.time() - t0:.2f}s | Tìm thấy: {len(kis_results)} dải sự kiện")
-            for i, r in enumerate(kis_results[:3]):
+            for i, r in enumerate(kis_results[:10]):
                 print(f"   Top {i+1}: Video {r.get('video_id')} ({r.get('start')}s -> {r.get('end')}s) | Peak Score: {r.get('peak_score'):.4f}")
                 print(f"      Ảnh minh họa: {r.get('image_path')}")
                 
-        elif choice == "2":
-            steps_input = input("Nhập các bước TRAKE (cách nhau bằng dấu phẩy ','): ").strip()
-            if not steps_input:
+        elif choice == "3":
+            q_vi = input("Nhập truy vấn Q&A (tiếng Việt): ").strip()
+            question_qa = input("Nhập câu hỏi chi tiết: ").strip()
+            if not q_vi or not question_qa:
                 continue
-            t0 = time.time()
-            trake_results = pipeline.search_trake(steps_input)
-            print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
             
-            if trake_results and trake_results.get("video_id"):
-                print(f"   Ví dụ top 1: Video {trake_results.get('video_id')} theo đúng trật tự thời gian")
-                print(f"   Chi tiết các sự kiện: {trake_results.get('events')}")
-            else:
-                print("   Không tìm thấy chuỗi sự kiện phù hợp.")
+            t0 = time.time()
+            # Gọi search_qa (mặc định lấy top_k lớn hơn để lọc top 10)
+            qa_results = pipeline.search_qa(query_text=q_vi, question=question_qa, top_k=50)
+            print(f"⏱️ Thời gian xử lý: {time.time() - t0:.2f}s")
+            
+            # Lọc và lấy tối đa Top 10 kết quả chuẩn bị nộp
+            top_10_qa = to_qa_json(qa_results, max_answers=10)
+            
+            print(f"\n📋 KẾT QUẢ Q&A (TOP {len(top_10_qa)}) CHI TIẾT:")
+            print("=" * 60)
+            for idx, res in enumerate(top_10_qa, 1):
+                print(f"🔹 Top {idx}:")
+                print(f"   • Video ID      : {res.get('video_id')}")
+                print(f"   • Frame ID      : {res.get('frame_id')}")
+                print(f"   • Câu trả lời AI: {res.get('answer')}")
+                print("-" * 60)
                 
         elif choice == "3":
             q_vi = input("Nhập truy vấn Q&A (tiếng Việt): ").strip()
