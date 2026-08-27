@@ -132,8 +132,8 @@ async def search_kis(request: KisQueryRequest):
         expanded_info = None
         search_prompt = query
 
-        # Tự động mở rộng & suy luận nếu câu văn là một đoạn truyện/đố mẹo dài (> 14 từ)
-        if request.auto_expand and len(query.split()) > 14:
+        # Tự động mở rộng & suy luận nếu câu văn là một đoạn truyện/đố mẹo dài (> 4 từ)
+        if request.auto_expand and len(query.split()) > 4:
             try:
                 expanded_info = get_expanded_query(query, api_key=request.gemini_api_key)
                 if expanded_info and expanded_info.get("visual_prompt_en"):

@@ -29,7 +29,7 @@ from typing import Callable, Optional
 @dataclass
 class PipelineConfig:
     # Temporal grouping (B4)
-    base_threshold: float = 0.40
+    base_threshold: float = 0.25   # Hạ từ 0.40 → 0.25 để không bỏ sót frame liên quan
     gap_tolerance: float = 2.0
     threshold_method: str = "percentile"
     percentile: float = 75.0
@@ -56,7 +56,7 @@ class PipelineConfig:
 
 def make_query_expander_llm(
     client,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = "gemini-2.5-flash",
     timeout_seconds: float = 3.0,
     max_variants: int = 4,
 ) -> Callable[[str], list[str]]:
@@ -511,10 +511,11 @@ if __name__ == "__main__":
     trake_results = pipeline.search_trake(query_trake_steps)
     print(f"⏱️ Thời gian: {time.time() - t0:.2f}s")
     
-    # Sửa tại đây: In đúng cấu trúc dictionary mà search_trake trả về
-    if trake_results and trake_results.get("video_id"):
-        print(f"   Ví dụ top 1: Video {trake_results.get('video_id')} theo đúng trật tự thời gian")
-        print(f"   Chi tiết các sự kiện: {trake_results.get('events')}")
+    # trake_results là list[dict], lấy phần tử đầu tiên
+    if trake_results:
+        top = trake_results[0]
+        print(f"   Ví dụ top 1: Video {top.get('video_id')} theo đúng trật tự thời gian")
+        print(f"   Chi tiết các sự kiện: {top.get('events')}")
     else:
         print("   Không tìm thấy chuỗi sự kiện phù hợp.")
 

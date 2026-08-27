@@ -322,6 +322,222 @@ python -m src.indexing.detect_objects --source btc --model yolo  # Detect object
 
 ---
 
+## BƯỚC 5 — Chạy OCR Phân Tán (nhóm chia nhau chạy)
+
+> OCR giúp hệ thống tìm frame có **số, chữ, thương hiệu** (biển số, logo, năm...).  
+> Script tự **resume** nếu bị ngắt — chạy lại lệnh cũ là tiếp tục từ chỗ dừng.
+
+### Yêu cầu dữ liệu
+
+OCR chỉ cần **ảnh keyframe JPG** — **không cần video gốc**.
+
+```
+data/btc/Keyframes/   ← 28.64 GB JPG, đã có sẵn từ BTC
+├── L21_V001/001.jpg
+├── L21_V001/002.jpg
+└── ...
+```
+
+---
+
+### Cách A — Chạy local (có GPU)
+
+```powershell
+# Bước 0: cài EasyOCR (1 lần)
+pip install easyocr
+
+# Bước 1: xem kế hoạch chia trước (ví dụ nhóm 3 người)
+python -m src.indexing.run_ocr_worker --plan --total 3
+
+# Bước 2: mỗi người chạy phần của mình
+python -m src.indexing.run_ocr_worker --part 1 --total 3   # Người 1
+python -m src.indexing.run_ocr_worker --part 2 --total 3   # Người 2
+python -m src.indexing.run_ocr_worker --part 3 --total 3   # Người 3
+
+# Nếu không có GPU:
+python -m src.indexing.run_ocr_worker --part 1 --total 3 --cpu
+```
+
+Output mỗi người: `data/processed/ocr_part_X_of_3.json`
+
+```powershell
+# Bước 3: copy tất cả file partial vào data/processed/ rồi merge
+python -m src.indexing.run_ocr_worker --merge
+# → Tạo ra: data/processed/ocr_index.json
+```
+
+---
+
+---
+
+### Cách B — Chạy trên Google Colab (GPU T4 miễn phí)
+
+> File notebook: `colab_ocr_worker.ipynb` — upload lên Colab để dùng.
+
+#### B.1 Cấu trúc Google Drive của nhóm
+
+Các file zip đã được upload sẵn tại `MyDrive/AIC2026/`:
+
+```
+MyDrive/
+└── AIC2026/                    ← thư mục gốc trên Drive
+    ├── keyframes_L21.zip       (1.34 GB)
+    ├── keyframes_L22.zip       (1.59 GB)
+    ├── keyframes_L23.zip       (481.6 MB)
+    ├── keyframes_L24.zip       (1.61 GB)
+    ├── keyframes_L25.zip       ← các lesson còn lại tương tự
+    └── ...
+```
+
+> **Không cần làm gì thêm với Drive** — chỉ cần Colab mount vào và unzip.
+
+---
+
+#### B.2 Pull code về Colab (làm đầu mỗi session)
+
+```bash
+# Bước 1: Clone nhánh feature-A7 về Colab (lần đầu)
+git clone -b feature-A7 https://github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git /content/AIC_2026
+
+# Bước 2: Nếu đã clone từ session trước → chỉ cần pull
+cd /content/AIC_2026
+git pull origin feature-A7
+
+# Bước 3: Vào thư mục project
+cd /content/AIC_2026
+```
+
+> **Kiểm tra nhánh đang đứng:**  
+> `git branch` → phải thấy `* feature-A7`
+
+---
+
+#### B.3 Unzip Keyframes từ Drive ra Colab
+
+> Chỉ cần unzip 1 lần cho session đầu tiên. Nếu session bị ngắt và chạy lại → **bỏ qua bước này** nếu `/content/keyframes/` vẫn còn.
+
+```python
+# Chạy trong Colab cell:
+import zipfile, os
+from pathlib import Path
+
+zip_dir = Path('/content/drive/MyDrive/AIC2026')   # thư mục chứa file zip trên Drive
+out_dir = Path('/content/keyframes')                # unzip ra đây (Colab local disk)
+
+# Kiểm tra nếu đã unzip từ session trước
+if out_dir.exists() and len(list(out_dir.iterdir())) > 0:
+    print(f'[Skip] /content/keyframes/ đã có {len(list(out_dir.iterdir()))} thư mục — bỏ qua unzip')
+else:
+    out_dir.mkdir(exist_ok=True)
+    # File tên dạng: keyframes_L21.zip, keyframes_L22.zip, ...
+    zip_files = sorted(zip_dir.glob('keyframes_L*.zip'))
+    print(f'Tìm thấy {len(zip_files)} file zip: {[f.name for f in zip_files]}')
+
+    for zf in zip_files:
+        print(f'Đang unzip {zf.name} ({zf.stat().st_size/1024/1024/1024:.2f} GB) ...')
+        with zipfile.ZipFile(zf, 'r') as z:
+            z.extractall(out_dir)
+        print(f'  ✅ Xong: {zf.name}')
+
+# Kiểm tra kết quả
+n_imgs = len(list(out_dir.rglob('*.jpg')))
+print(f'\nTổng ảnh: {n_imgs:,}  (kỳ vọng ~177,000)')
+```
+
+Sau khi unzip, cấu trúc sẽ là:
+```
+/content/keyframes/
+├── L21_V001/
+│   ├── 001.jpg
+│   └── ...
+├── L21_V002/
+└── ...
+```
+
+Sau đó **trỏ project vào thư mục vừa unzip**:
+```python
+import os
+from pathlib import Path
+
+# Tạo symlink: data/btc/Keyframes → /content/keyframes
+project_kf = Path('/content/AIC_2026/data/btc/Keyframes')
+project_kf.parent.mkdir(parents=True, exist_ok=True)
+
+if project_kf.is_symlink():
+    project_kf.unlink()
+if not project_kf.exists():
+    os.symlink('/content/keyframes', str(project_kf))
+
+print(f'✅ OK: {len(list(project_kf.iterdir()))} video dirs')
+```
+
+
+
+
+#### B.4 Chạy OCR
+
+```bash
+# Cài EasyOCR (1 lần mỗi session)
+pip install easyocr -q
+
+# Xem kế hoạch chia (tuỳ chọn)
+cd /content/AIC_2026
+python -m src.indexing.run_ocr_worker --plan --total 3
+
+# Chạy phần của mình (GPU T4, ~5-10h)
+python -m src.indexing.run_ocr_worker --part 1 --total 3
+# Script tự resume nếu bị ngắt — chạy lại lệnh trên là tiếp tục
+```
+
+---
+
+#### B.5 Lưu kết quả về Drive (quan trọng — chạy sau khi xong)
+
+```python
+import shutil
+from pathlib import Path
+
+PART, TOTAL = 1, 3   # chỉnh theo phần của bạn
+src = Path(f'/content/AIC_2026/data/processed/ocr_part_{PART}_of_{TOTAL}.json')
+dst = Path('/content/drive/MyDrive/AIC2026_data/ocr_results')
+dst.mkdir(exist_ok=True)
+
+shutil.copy2(src, dst / src.name)
+print(f'Saved: {dst / src.name}  ({src.stat().st_size/1024/1024:.1f} MB)')
+```
+
+---
+
+#### B.6 Merge (người được phân công)
+
+Copy tất cả `ocr_part_*.json` từ Drive về `data/processed/`, rồi:
+
+```bash
+# Local (Windows)
+python -m src.indexing.run_ocr_worker --merge
+
+# Hoặc trên Colab
+python -m src.indexing.run_ocr_worker --merge
+```
+
+→ Tạo ra `data/processed/ocr_index.json`, **commit lên Git** để cả nhóm dùng được.
+
+---
+
+### Ước tính thời gian (872 video / 177K ảnh chia 3 người)
+
+| Người | Video | Ảnh | GPU Colab T4 | CPU local |
+|-------|-------|-----|-------------|-----------|
+| 1 | 1–291 | ~89K | ~10h | ~37h |
+| 2 | 292–582 | ~46K | ~5h | ~19h |
+| 3 | 583–872 | ~50K | ~6h | ~21h |
+
+> **Mẹo Colab**: Nếu sợ session bị ngắt sau 12h, đặt `--total 6` chia nhỏ hơn.  
+> Script sẽ resume đúng chỗ khi chạy lại.
+
+---
+
+
 ## Thêm Model Sau (OCR / ASR / Face)
 
 Không ảnh hưởng gì đến luồng hiện tại. Mỗi model chỉ thêm 1 nguồn điểm boost trong retriever:
@@ -334,5 +550,6 @@ data/btc/
 
 data/processed/
 ├── index_btc.faiss       ← không thay đổi
+├── ocr_index.json        ← output của bước OCR phân tán
 └── objects/              ← không thay đổi
 ```

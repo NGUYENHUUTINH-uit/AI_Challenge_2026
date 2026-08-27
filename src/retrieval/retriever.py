@@ -84,7 +84,7 @@ def _translate_vi_to_en(text: str) -> str:
             from google import genai
             client = genai.Client(api_key=gemini_key)
             r = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=f"Translate the following Vietnamese text to English literally and accurately for video search. Return ONLY the direct English translation without extra words or quotes:\n\"{text_clean}\""
             )
             trans = r.text.strip().strip('"').strip("'").strip("`")

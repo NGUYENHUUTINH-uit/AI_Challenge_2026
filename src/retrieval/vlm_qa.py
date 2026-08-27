@@ -85,7 +85,7 @@ YÊU CẦU BẮT BUỘC:
 4. Nếu hỏi chữ/biển số: CHỈ trả về chính xác nội dung chữ viết.
 5. KHÔNG giải thích dài dòng, KHÔNG chào hỏi, KHÔNG dùng tiền tố như 'Đáp án là'."""
 
-        # Danh sách các model thử nghiệm theo thứ tự ưu tiên tốc độ & độ ổn định
+        # Danh sách các model đang hoạt động chính thức trên Google AI Studio
         candidate_models = [model_name] if model_name else []
         candidate_models += ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
