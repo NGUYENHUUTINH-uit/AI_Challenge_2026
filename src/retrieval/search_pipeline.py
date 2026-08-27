@@ -166,10 +166,17 @@ def extract_query_objects(query_text: str) -> list[str]:
     return list(matched_classes)
 
 
-def rerank_by_objects(raw_results: list[dict], query_text: str, cfg: Optional[PipelineConfig] = None) -> list[dict]:
+def rerank_by_objects(
+    raw_results: list[dict],
+    query_text: str,
+    cfg: Optional[PipelineConfig] = None,
+    extra_objects: Optional[list[str]] = None,
+    extra_ocr_keywords: Optional[list[str]] = None,
+) -> list[dict]:
     """
     Multi-modal Score Fusion:
     Score = Score_CLIP + (matched_objects * object_alpha) + (matched_ocr * ocr_alpha)
+    Hỗ trợ kết hợp cả từ điển tĩnh tiếng Việt và đối tượng/OCR do LLM trích xuất tự động.
     """
     if cfg is None:
         cfg = PipelineConfig()
@@ -177,10 +184,20 @@ def rerank_by_objects(raw_results: list[dict], query_text: str, cfg: Optional[Pi
     if not raw_results:
         return []
 
-    # 1. Trích xuất object và OCR keywords từ query
+    # 1. Trích xuất object và OCR keywords từ query (kết hợp Heuristic + LLM)
     from src.indexing.ocr_indexer import extract_potential_ocr_keywords, get_ocr_indexer
-    query_objects = extract_query_objects(query_text)
-    ocr_keywords = extract_potential_ocr_keywords(query_text)
+    query_objects = set(extract_query_objects(query_text))
+    if extra_objects:
+        for eo in extra_objects:
+            if eo and isinstance(eo, str):
+                query_objects.add(eo.strip().lower())
+
+    ocr_keywords = set(extract_potential_ocr_keywords(query_text))
+    if extra_ocr_keywords:
+        for ok in extra_ocr_keywords:
+            if ok and isinstance(ok, str):
+                ocr_keywords.add(ok.strip().lower())
+
     ocr_indexer = get_ocr_indexer()
 
     out = []
@@ -190,7 +207,12 @@ def rerank_by_objects(raw_results: list[dict], query_text: str, cfg: Optional[Pi
 
         # A. Object Score
         frame_objects_lower = {str(o).lower() for o in r.get("objects", [])}
-        matched_obj = sum(1 for qo in query_objects if qo.lower() in frame_objects_lower)
+        matched_obj = 0
+        for qo in query_objects:
+            qo_clean = qo.lower()
+            if qo_clean in frame_objects_lower or any(qo_clean in fo for fo in frame_objects_lower):
+                matched_obj += 1
+
         obj_bonus = min(matched_obj * cfg.object_alpha, cfg.max_object_bonus)
 
         # B. OCR Score

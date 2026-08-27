@@ -147,7 +147,15 @@ async def search_kis(request: KisQueryRequest):
             video_filter=request.video_filter
         )
 
-        reranked = rerank_by_objects(raw_results, query)
+        extra_objects = expanded_info.get("core_objects_en", []) if expanded_info else []
+        extra_ocr = expanded_info.get("ocr_keywords", []) if expanded_info else []
+
+        reranked = rerank_by_objects(
+            raw_results,
+            query,
+            extra_objects=extra_objects,
+            extra_ocr_keywords=extra_ocr
+        )
         final = reranked[: request.top_k]
 
         return {
@@ -175,18 +183,40 @@ async def search_qa(request: QaQueryRequest):
     """
     try:
         from src.retrieval.vlm_qa import get_vqa_answer
+        from src.retrieval.query_expander import get_expanded_query
+
         query = request.query.strip()
         question = (request.question or query).strip()
         if not query:
             raise HTTPException(status_code=400, detail="Query hoặc câu hỏi không được để trống.")
 
+        expanded_info = None
+        search_prompt = query
+
+        # Tự động mở rộng nếu câu query dài
+        if len(query.split()) > 4:
+            try:
+                expanded_info = get_expanded_query(query, api_key=request.gemini_api_key)
+                if expanded_info and expanded_info.get("visual_prompt_en"):
+                    search_prompt = expanded_info["visual_prompt_en"]
+            except Exception:
+                pass
+
         raw_results = _retriever.search_keyframes(
-            query_text=query,
+            query_text=search_prompt,
             top_k=min(request.top_k * 2, 200),
             video_filter=request.video_filter
         )
 
-        reranked = rerank_by_objects(raw_results, query)
+        extra_objects = expanded_info.get("core_objects_en", []) if expanded_info else []
+        extra_ocr = expanded_info.get("ocr_keywords", []) if expanded_info else []
+
+        reranked = rerank_by_objects(
+            raw_results,
+            query,
+            extra_objects=extra_objects,
+            extra_ocr_keywords=extra_ocr
+        )
         final = reranked[: request.top_k]
 
         # Sinh gợi ý đáp án sơ bộ bằng Heuristic siêu tốc (<0.005s) để trả về UI tức thì
