@@ -372,155 +372,120 @@ python -m src.indexing.run_ocr_worker --merge
 
 ### Cách B — Chạy trên Google Colab (GPU T4 miễn phí)
 
-> File notebook: `colab_ocr_worker.ipynb` — upload lên Colab để dùng.
-
-#### B.1 Cấu trúc Google Drive của nhóm
-
-Các file zip đã được upload sẵn tại `MyDrive/AIC2026/`:
-
-```
-MyDrive/
-└── AIC2026/                    ← thư mục gốc trên Drive
-    ├── keyframes_L21.zip       (1.34 GB)
-    ├── keyframes_L22.zip       (1.59 GB)
-    ├── keyframes_L23.zip       (481.6 MB)
-    ├── keyframes_L24.zip       (1.61 GB)
-    ├── keyframes_L25.zip       ← các lesson còn lại tương tự
-    └── ...
-```
-
-> **Không cần làm gì thêm với Drive** — chỉ cần Colab mount vào và unzip.
-
----
-
-#### B.2 Pull code về Colab (làm đầu mỗi session)
-
-```bash
-# Bước 1: Clone nhánh feature-A7 về Colab (lần đầu)
-git clone -b feature-A7 https://github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git /content/AIC_2026
-
-# Bước 2: Nếu đã clone từ session trước → chỉ cần pull
-cd /content/AIC_2026
-git pull origin feature-A7
-
-# Bước 3: Vào thư mục project
-cd /content/AIC_2026
-```
-
-> **Kiểm tra nhánh đang đứng:**  
-> `git branch` → phải thấy `* feature-A7`
-
----
-
-#### B.3 Unzip Keyframes từ Drive ra Colab
-
-> Chỉ cần unzip 1 lần cho session đầu tiên. Nếu session bị ngắt và chạy lại → **bỏ qua bước này** nếu `/content/keyframes/` vẫn còn.
+#### B.2 Mount Drive & Kéo code về Colab (Cell 1 & Cell 2)
 
 ```python
-# Chạy trong Colab cell:
+# Cell 1: Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```python
+# Cell 2: Kéo code từ nhánh feature-A7
+import os
+
+if not os.path.exists('/content/AIC_2026'):
+    !git clone -b feature-A7 https://github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git /content/AIC_2026
+else:
+    !cd /content/AIC_2026 && git pull origin feature-A7
+
+os.chdir('/content/AIC_2026')
+print('✅ Code sẵn sàng tại /content/AIC_2026')
+```
+
+---
+
+#### B.3 Unzip Keyframes từ Drive ra Colab (Cell 3)
+
+> Chỉ cần unzip 1 lần. Nếu session trước đã unzip thì đoạn code này sẽ tự động bỏ qua (Skip).
+
+```python
+# Cell 3: Giải nén keyframes từ Drive
 import zipfile, os
 from pathlib import Path
 
-zip_dir = Path('/content/drive/MyDrive/AIC2026')   # thư mục chứa file zip trên Drive
-out_dir = Path('/content/keyframes')                # unzip ra đây (Colab local disk)
+zip_dir = Path('/content/drive/MyDrive/AIC2026')   # thư mục chứa zip trên Drive
+out_dir = Path('/content/keyframes')                # giải nén ra ổ đĩa Colab
 
-# Kiểm tra nếu đã unzip từ session trước
+# Kiểm tra nếu đã unzip từ trước
 if out_dir.exists() and len(list(out_dir.iterdir())) > 0:
-    print(f'[Skip] /content/keyframes/ đã có {len(list(out_dir.iterdir()))} thư mục — bỏ qua unzip')
+    print(f'✅ [Skip] /content/keyframes đã có sẵn {len(list(out_dir.iterdir()))} thư mục video.')
 else:
-    out_dir.mkdir(exist_ok=True)
-    # File tên dạng: keyframes_L21.zip, keyframes_L22.zip, ...
+    out_dir.mkdir(parents=True, exist_ok=True)
     zip_files = sorted(zip_dir.glob('keyframes_L*.zip'))
     print(f'Tìm thấy {len(zip_files)} file zip: {[f.name for f in zip_files]}')
 
     for zf in zip_files:
-        print(f'Đang unzip {zf.name} ({zf.stat().st_size/1024/1024/1024:.2f} GB) ...')
+        print(f'Đang giải nén {zf.name} ({zf.stat().st_size/1024/1024/1024:.2f} GB) ...')
         with zipfile.ZipFile(zf, 'r') as z:
             z.extractall(out_dir)
-        print(f'  ✅ Xong: {zf.name}')
+        print(f'  ✅ Xong {zf.name}')
 
-# Kiểm tra kết quả
-n_imgs = len(list(out_dir.rglob('*.jpg')))
-print(f'\nTổng ảnh: {n_imgs:,}  (kỳ vọng ~177,000)')
-```
-
-Sau khi unzip, cấu trúc sẽ là:
-```
-/content/keyframes/
-├── L21_V001/
-│   ├── 001.jpg
-│   └── ...
-├── L21_V002/
-└── ...
-```
-
-Sau đó **trỏ project vào thư mục vừa unzip**:
-```python
-import os
-from pathlib import Path
-
-# Tạo symlink: data/btc/Keyframes → /content/keyframes
+# Tạo symlink liên kết vào thư mục project
 project_kf = Path('/content/AIC_2026/data/btc/Keyframes')
 project_kf.parent.mkdir(parents=True, exist_ok=True)
-
 if project_kf.is_symlink():
     project_kf.unlink()
 if not project_kf.exists():
     os.symlink('/content/keyframes', str(project_kf))
 
-print(f'✅ OK: {len(list(project_kf.iterdir()))} video dirs')
-```
-
-
-
-
-#### B.4 Chạy OCR
-
-```bash
-# Cài EasyOCR (1 lần mỗi session)
-pip install easyocr -q
-
-# Xem kế hoạch chia (tuỳ chọn)
-cd /content/AIC_2026
-python -m src.indexing.run_ocr_worker --plan --total 3
-
-# Chạy phần của mình (GPU T4, ~5-10h)
-python -m src.indexing.run_ocr_worker --part 1 --total 3
-# Script tự resume nếu bị ngắt — chạy lại lệnh trên là tiếp tục
+print(f'\n✅ Hoàn tất! Đã liên kết {len(list(project_kf.iterdir()))} thư mục video vào project.')
 ```
 
 ---
 
-#### B.5 Lưu kết quả về Drive (quan trọng — chạy sau khi xong)
+#### B.4 Cài EasyOCR & Chạy OCR cho phần của bạn (Cell 4 & Cell 5)
 
 ```python
+# Cell 4: Cài EasyOCR
+!pip install easyocr -q
+print('✅ Đã cài đặt EasyOCR!')
+
+# (Tùy chọn) Xem phân công video:
+!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --plan --total 3
+```
+
+```python
+# Cell 5: Chạy OCR (Thay PART và TOTAL đúng với phân công của bạn)
+# ⏱️ Script tự động lưu & resume nếu bị ngắt kết nối
+!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --part 1 --total 3
+```
+
+---
+
+#### B.5 Lưu kết quả về Google Drive (Cell 6)
+
+```python
+# Cell 6: Copy file kết quả về Drive để không bị mất khi hết session
 import shutil
 from pathlib import Path
 
-PART, TOTAL = 1, 3   # chỉnh theo phần của bạn
+PART, TOTAL = 1, 3   # chỉnh đúng phần của bạn (1, 2, hoặc 3)
 src = Path(f'/content/AIC_2026/data/processed/ocr_part_{PART}_of_{TOTAL}.json')
-dst = Path('/content/drive/MyDrive/AIC2026_data/ocr_results')
-dst.mkdir(exist_ok=True)
+dst = Path('/content/drive/MyDrive/AIC2026/ocr_results')
+dst.mkdir(parents=True, exist_ok=True)
 
-shutil.copy2(src, dst / src.name)
-print(f'Saved: {dst / src.name}  ({src.stat().st_size/1024/1024:.1f} MB)')
+if src.exists():
+    dst_file = dst / src.name
+    shutil.copy2(src, dst_file)
+    size_mb = dst_file.stat().st_size / 1024 / 1024
+    print(f'✅ Đã lưu file về Drive: {dst_file} ({size_mb:.1f} MB)')
+    print(f'👉 Tải file này về máy để gộp với nhóm!')
+else:
+    print(f'❌ Không tìm thấy file {src}')
 ```
 
 ---
 
-#### B.6 Merge (người được phân công)
+#### B.6 Gộp các file OCR lại (Merge)
 
-Copy tất cả `ocr_part_*.json` từ Drive về `data/processed/`, rồi:
+Mỗi người tải các file `ocr_part_X_of_3.json` về bỏ vào thư mục `data/processed/` trên máy tính của mình, rồi mở PowerShell gõ:
 
-```bash
-# Local (Windows)
-python -m src.indexing.run_ocr_worker --merge
-
-# Hoặc trên Colab
+```powershell
 python -m src.indexing.run_ocr_worker --merge
 ```
 
-→ Tạo ra `data/processed/ocr_index.json`, **commit lên Git** để cả nhóm dùng được.
+→ Tạo ra `data/processed/ocr_index.json` sẵn sàng dùng cho cả hệ thống!
 
 ---
 
