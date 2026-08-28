@@ -381,11 +381,20 @@ drive.mount('/content/drive')
 ```
 
 ```python
-# Cell 2: Kéo code từ nhánh feature-A7
+# Cell 2: Kéo code từ nhánh feature-A7 (Đọc Token từ mục Secrets 🔑)
 import os
+from google.colab import userdata
+
+try:
+    # Tự động lấy token từ mục Secrets (icon chìa khóa 🔑 bên trái Colab: Name = GITHUB_TOKEN)
+    GITHUB_TOKEN = userdata.get('GITHUB_TOKEN')
+    REPO_URL = f"https://{GITHUB_TOKEN}@github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git"
+except Exception:
+    # Nếu repo là PUBLIC hoặc không cài Secrets:
+    REPO_URL = "https://github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git"
 
 if not os.path.exists('/content/AIC_2026'):
-    !git clone -b feature-A7 https://github.com/NGUYENHUUTINH-uit/AI_Challenge_2026.git /content/AIC_2026
+    !git clone -b feature-A7 {REPO_URL} /content/AIC_2026
 else:
     !cd /content/AIC_2026 && git pull origin feature-A7
 
