@@ -443,21 +443,24 @@ print(f'\n✅ Hoàn tất! Đã liên kết {len(list(project_kf.iterdir()))} th
 
 ---
 
-#### B.4 Cài EasyOCR & Chạy OCR cho phần của bạn (Cell 4 & Cell 5)
+#### B.4 Cài EasyOCR & Chạy OCR theo Lesson (Cell 4 & Cell 5)
 
 ```python
-# Cell 4: Cài EasyOCR
+# Cell 4: Cài EasyOCR & Xem danh sách thống kê Lesson
 !pip install easyocr -q
 print('✅ Đã cài đặt EasyOCR!')
 
-# (Tùy chọn) Xem phân công video:
-!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --plan --total 3
+!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --plan
 ```
 
 ```python
-# Cell 5: Chạy OCR (Thay PART và TOTAL đúng với phân công của bạn)
+# Cell 5: Chạy OCR theo Lesson được phân công
 # ⏱️ Script tự động lưu & resume nếu bị ngắt kết nối
-!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --part 1 --total 3
+# Ví dụ:
+#   Người 1: --lessons L21,L22,L23,L24,L27,L28,L29,L30
+#   Người 2: --lessons L25
+#   Người 3: --lessons L26
+!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --lessons L21,L22,L23,L24
 ```
 
 ---
@@ -465,49 +468,53 @@ print('✅ Đã cài đặt EasyOCR!')
 #### B.5 Lưu kết quả về Google Drive (Cell 6)
 
 ```python
-# Cell 6: Copy file kết quả về Drive để không bị mất khi hết session
+# Cell 6: Copy tất cả file partial OCR vừa tạo về Drive để không bị mất
 import shutil
 from pathlib import Path
 
-PART, TOTAL = 1, 3   # chỉnh đúng phần của bạn (1, 2, hoặc 3)
-src = Path(f'/content/AIC_2026/data/processed/ocr_part_{PART}_of_{TOTAL}.json')
-dst = Path('/content/drive/MyDrive/AIC2026/ocr_results')
-dst.mkdir(parents=True, exist_ok=True)
+src_dir = Path('/content/AIC_2026/data/processed')
+dst_dir = Path('/content/drive/MyDrive/AIC2026/ocr_results')
+dst_dir.mkdir(parents=True, exist_ok=True)
 
-if src.exists():
-    dst_file = dst / src.name
-    shutil.copy2(src, dst_file)
-    size_mb = dst_file.stat().st_size / 1024 / 1024
-    print(f'✅ Đã lưu file về Drive: {dst_file} ({size_mb:.1f} MB)')
-    print(f'👉 Tải file này về máy để gộp với nhóm!')
-else:
-    print(f'❌ Không tìm thấy file {src}')
+part_files = list(src_dir.glob('ocr_part_*.json'))
+for f in part_files:
+    shutil.copy2(f, dst_dir / f.name)
+    size_mb = f.stat().st_size / 1024 / 1024
+    print(f'✅ Đã lưu về Drive: {dst_dir / f.name} ({size_mb:.1f} MB)')
+
+if not part_files:
+    print('❌ Chưa có file kết quả ocr_part_*.json nào.')
 ```
 
 ---
 
 #### B.6 Gộp các file OCR lại (Merge)
 
-Mỗi người tải các file `ocr_part_X_of_3.json` về bỏ vào thư mục `data/processed/` trên máy tính của mình, rồi mở PowerShell gõ:
+Mỗi người tải các file `ocr_part_*.json` từ Drive về bỏ vào thư mục `data/processed/` trên máy tính của mình, rồi mở PowerShell gõ:
 
 ```powershell
 python -m src.indexing.run_ocr_worker --merge
 ```
 
-→ Tạo ra `data/processed/ocr_index.json` sẵn sàng dùng cho cả hệ thống!
+→ Hệ thống sẽ tự động quét tất cả các file `ocr_part_*.json` và gộp thành `data/processed/ocr_index.json` sẵn sàng dùng cho cả nhóm!
 
 ---
 
-### Ước tính thời gian (872 video / 177K ảnh chia 3 người)
+### ⏱️ Thống kê thời gian thực tế theo từng Lesson
 
-| Người | Video | Ảnh | GPU Colab T4 | CPU local |
-|-------|-------|-----|-------------|-----------|
-| 1 | 1–291 | ~89K | ~10h | ~37h |
-| 2 | 292–582 | ~46K | ~5h | ~19h |
-| 3 | 583–872 | ~50K | ~6h | ~21h |
-
-> **Mẹo Colab**: Nếu sợ session bị ngắt sau 12h, đặt `--total 6` chia nhỏ hơn.  
-> Script sẽ resume đúng chỗ khi chạy lại.
+| Lesson | Số Video | Số Ảnh | GPU Colab T4 | CPU Local | Gợi ý phân công |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **L21** | 29 | 7,800 | ~52 phút | ~3.2h | **Người 1** (`--lessons L21,L22,L23,L24,L27,L28,L29,L30`) |
+| **L22** | 31 | 9,096 | ~1.0h | ~3.8h | |
+| **L23** | 25 | 2,326 | ~16 phút | ~1.0h | |
+| **L24** | 43 | 6,781 | ~45 phút | ~2.8h | |
+| **L25** | 88 | 37,445 | **~4.2h** | ~15.6h | **Người 2** (`--lessons L25`) |
+| **L26** | 497 | 79,428 | **~8.8h** | ~33.1h | **Người 3** (`--lessons L26`) |
+| **L27** | 16 | 4,914 | ~33 phút | ~2.0h | |
+| **L28** | 24 | 10,683 | ~1.2h | ~4.5h | |
+| **L29** | 23 | 10,771 | ~1.2h | ~4.5h | |
+| **L30** | 96 | 7,915 | ~53 phút | ~3.3h | |
+| **TỔNG** | **872** | **177,159** | **~19.7h** | **~73.8h** | |
 
 ---
 
