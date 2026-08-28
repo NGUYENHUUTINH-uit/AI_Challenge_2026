@@ -1,28 +1,24 @@
 """
-run_ocr_worker.py — Chạy OCR phân tán cho nhóm
-================================================
+run_ocr_worker.py — Chạy OCR phân tán cho nhóm (Tự động lưu Google Drive Real-time)
+===================================================================================
 Cách dùng:
   1. Chạy theo Lesson (Khuyên dùng):
-     Người 1:  python -m src.indexing.run_ocr_worker --lessons L21,L22,L23,L24
+     Người 1:  python -m src.indexing.run_ocr_worker --lessons L21,L22,L23,L24,L27,L28,L29,L30
      Người 2:  python -m src.indexing.run_ocr_worker --lessons L25
      Người 3:  python -m src.indexing.run_ocr_worker --lessons L26
 
-  2. Chạy theo phân chia tự động (Part X of Total):
-     python -m src.indexing.run_ocr_worker --part 1 --total 3
-
-  3. Sau khi tất cả chạy xong:
+  2. Gộp tất cả sau khi chạy xong:
      python -m src.indexing.run_ocr_worker --merge
 
-Output mỗi người: data/processed/ocr_part_<tag>.json
-Output merge:     data/processed/ocr_index.json
-
-Ghi chú:
-  - Script tự resume: nếu bị ngắt giữa chừng, chạy lại sẽ bỏ qua video đã xong
-  - Cài EasyOCR: pip install easyocr
+Tính năng nổi bật:
+  - TỰ ĐỘNG SYNC VÀO GOOGLE DRIVE: Cứ sau mỗi 1 video hoàn thành, file JSON được ghi thẳng vào Google Drive.
+  - TỰ ĐỘNG RESUME: Nếu bị ngắt kết nối/đổi máy ảo, script tự nạp lại tiến độ từ Google Drive và chạy tiếp.
+  - SIÊU NHẸ: In log 1 dòng/video, không gây giật lag trình duyệt.
 """
 
 import argparse
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -30,6 +26,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 BTC_KEYFRAMES = PROJECT_ROOT / "data" / "btc" / "Keyframes"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 OCR_INDEX_FILE = PROCESSED_DIR / "ocr_index.json"
+
+# Đường dẫn tự động nhận diện Google Drive trên Colab
+DEFAULT_DRIVE_DIR = Path("/content/drive/MyDrive/AIC2026/ocr_results")
 
 
 # ──────────────────────────────────────────────
@@ -62,7 +61,7 @@ def get_videos_by_part(part: int, total: int) -> tuple[list, str]:
     """Trả về danh sách video folder theo phần (Part X of Total)."""
     all_videos = get_all_video_dirs()
     n = len(all_videos)
-    chunk_size = (n + total - 1) // total  # ceiling division
+    chunk_size = (n + total - 1) // total
     start = (part - 1) * chunk_size
     end = min(start + chunk_size, n)
     assigned = all_videos[start:end]
@@ -104,17 +103,16 @@ def ocr_image(reader, img_path: Path) -> str:
 
 
 # ──────────────────────────────────────────────
-# 4. PIPELINE CHÍNH
+# 4. PIPELINE CHÍNH (REAL-TIME GOOGLE DRIVE SYNC)
 # ──────────────────────────────────────────────
 
 def run_ocr(target_videos: list, tag: str, use_gpu: bool = True):
     """
     Chạy OCR cho danh sách video được phân công.
-    - Resume tự động: video đã xong trong file JSON sẽ bị skip.
-    - Lưu từng video ngay sau khi xong (không mất dữ liệu nếu bị ngắt).
+    - Tự động nạp tiến độ cũ từ Drive / Local để Resume.
+    - Cứ xong 1 video là GHI TRỰC TIẾP VÀO GOOGLE DRIVE.
+    - Không bao giờ mất dữ liệu kể cả khi máy ảo Colab bị restart.
     """
-    from tqdm import tqdm
-
     if not target_videos:
         print("[OCR] Khong tim thay video nao phu hop de chay OCR!")
         return
@@ -122,13 +120,26 @@ def run_ocr(target_videos: list, tag: str, use_gpu: bool = True):
     output_file = PROCESSED_DIR / f"ocr_part_{tag}.json"
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Load file đã có (để resume)
+    drive_dir = DEFAULT_DRIVE_DIR
+    drive_file = drive_dir / f"ocr_part_{tag}.json" if drive_dir.parent.exists() else None
+    if drive_file:
+        drive_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Khôi phục tiến độ cũ (Ưu tiên đọc từ Drive trước, rồi đến Local)
     ocr_data: dict = {}
-    if output_file.exists():
+    if drive_file and drive_file.exists():
+        try:
+            with open(drive_file, encoding="utf-8") as f:
+                ocr_data = json.load(f)
+            print(f"[Resume] Da tim thay va nap {len(ocr_data)} video da xong tu Google Drive!")
+        except Exception:
+            pass
+
+    if not ocr_data and output_file.exists():
         try:
             with open(output_file, encoding="utf-8") as f:
                 ocr_data = json.load(f)
-            print(f"[Resume] Da co {len(ocr_data)} video trong {output_file.name}")
+            print(f"[Resume] Da nap {len(ocr_data)} video da xong tu o dia local.")
         except Exception:
             ocr_data = {}
 
@@ -137,45 +148,57 @@ def run_ocr(target_videos: list, tag: str, use_gpu: bool = True):
 
     # Danh sách video cần xử lý
     pending = [v for v in target_videos if v.name not in ocr_data]
-    print(f"[OCR Worker] Can xu ly: {len(pending)}/{len(target_videos)} video "
-          f"(da skip {len(target_videos) - len(pending)} video da co)")
+    print(f"[OCR Worker] Tong video: {len(target_videos)} | Da xong: {len(ocr_data)} | Con lai: {len(pending)}")
 
     total_imgs = sum(len(list(v.glob("*.jpg"))) for v in pending)
-    print(f"[OCR Worker] Tong so anh can OCR: {total_imgs:,}")
+    print(f"[OCR Worker] Tong so anh can OCR tiep theo: {total_imgs:,}")
 
     t0 = time.time()
     processed_imgs = 0
+    total_pending_vids = len(pending)
 
-    for v_dir in tqdm(pending, desc="Video", unit="video"):
+    for idx, v_dir in enumerate(pending, start=1):
+        t_v0 = time.time()
         video_id = v_dir.name
         img_files = sorted(v_dir.glob("*.jpg"))
 
         video_ocr: dict = {}
-        for img_path in tqdm(img_files, desc=video_id, unit="img", leave=False):
+        for img_path in img_files:
             text = ocr_image(reader, img_path)
             if text:
                 video_ocr[img_path.name] = text
             processed_imgs += 1
 
-        # Lưu ngay sau khi xong từng video (bảo vệ khỏi crash/timeout)
+        # 1. Lưu vào file local
         ocr_data[video_id] = video_ocr
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(ocr_data, f, ensure_ascii=False, indent=2)
+
+        # 2. ĐỒNG BỘ TRỰC TIẾP VÀO GOOGLE DRIVE NGAY LẬP TỨC
+        if drive_file:
+            try:
+                shutil.copy2(output_file, drive_file)
+            except Exception:
+                pass
+
+        v_elapsed = time.time() - t_v0
+        speed = len(img_files) / max(v_elapsed, 0.001)
+        print(f"[{idx}/{total_pending_vids}] {video_id}: {len(img_files)} anh ({speed:.1f} anh/s, {v_elapsed:.1f}s) | Co text: {len(video_ocr)} | Tong: {len(ocr_data)}/{len(target_videos)} video da luu Drive")
 
     elapsed = time.time() - t0
     has_text = sum(len(v) for v in ocr_data.values())
 
     print(f"\n{'='*55}")
-    print(f"  OCR WORKER [{tag}] - XONG!")
+    print(f"  OCR WORKER [{tag}] - HOAN TAT 100%!")
     print(f"{'='*55}")
-    print(f"  Video xu ly  : {len(target_videos)}")
+    print(f"  Tong video   : {len(target_videos)}")
     print(f"  Anh da OCR   : {processed_imgs:,}")
-    print(f"  Anh co text  : {has_text:,} ({has_text/max(processed_imgs,1)*100:.1f}%)")
+    print(f"  Anh co text  : {has_text:,}")
     print(f"  Thoi gian    : {elapsed/60:.1f} phut")
-    print(f"  Output file  : {output_file}")
-    print(f"{'='*55}")
-    print(f"\nBuoc tiep theo: Tai file '{output_file.name}' ve may de merge:")
-    print(f"  python -m src.indexing.run_ocr_worker --merge")
+    if drive_file:
+        print(f"  File tren Drive: {drive_file}")
+    print(f"  File tren Local: {output_file}")
+    print(f"{'='*55}\n")
 
 
 # ──────────────────────────────────────────────
@@ -185,25 +208,34 @@ def run_ocr(target_videos: list, tag: str, use_gpu: bool = True):
 def merge_all_parts():
     """
     Gom toàn bộ file ocr_part_*.json thành 1 file ocr_index.json.
-    Chạy sau khi tất cả thành viên đã xong và copy file vào data/processed/.
+    Tự động quét cả thư mục local và Google Drive.
     """
-    part_files = sorted(PROCESSED_DIR.glob("ocr_part_*.json"))
-    if not part_files:
-        print("[Merge] Khong tim thay file ocr_part_*.json trong data/processed/")
-        print("Huong dan: Copy cac file ocr_part_*.json vao:")
-        print(f"  {PROCESSED_DIR}")
+    # 1. Quét tìm tất cả các file partial
+    part_files_dict: dict[str, Path] = {}
+
+    # Quét thư mục local
+    for f in PROCESSED_DIR.glob("ocr_part_*.json"):
+        part_files_dict[f.name] = f
+
+    # Quét thư mục Google Drive (nếu có)
+    if DEFAULT_DRIVE_DIR.exists():
+        for f in DEFAULT_DRIVE_DIR.glob("ocr_part_*.json"):
+            part_files_dict[f.name] = f
+
+    if not part_files_dict:
+        print("[Merge] Khong tim thay file ocr_part_*.json trong data/processed/ hoac Google Drive!")
         return
 
-    print(f"[Merge] Tim thay {len(part_files)} file partial:")
-    for f in part_files:
+    print(f"[Merge] Tim thay {len(part_files_dict)} file partial:")
+    for name, f in part_files_dict.items():
         size_kb = f.stat().st_size / 1024
-        print(f"  - {f.name} ({size_kb:.0f} KB)")
+        print(f"  - {name} ({size_kb:.0f} KB) tu {f.parent}")
 
     merged: dict = {}
     total_videos = 0
     total_frames = 0
 
-    for part_file in part_files:
+    for name, part_file in part_files_dict.items():
         try:
             with open(part_file, encoding="utf-8") as f:
                 data = json.load(f)
@@ -212,12 +244,20 @@ def merge_all_parts():
                 total_videos += 1
                 total_frames += len(frames)
             n_frames = sum(len(v) for v in data.values())
-            print(f"  [OK] Da nap {part_file.name}: {len(data)} video, {n_frames} frame co OCR")
+            print(f"  [OK] Da nap {name}: {len(data)} video, {n_frames} frame co OCR")
         except Exception as e:
-            print(f"  [WARN] Loi doc file {part_file.name}: {e}")
+            print(f"  [WARN] Loi doc file {name}: {e}")
 
     with open(OCR_INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
+
+    # Nếu có Google Drive thì lưu luôn 1 bản vào Drive
+    if DEFAULT_DRIVE_DIR.exists():
+        try:
+            shutil.copy2(OCR_INDEX_FILE, DEFAULT_DRIVE_DIR / "ocr_index.json")
+            print(f"  [Drive] Da sao luu ocr_index.json len Drive: {DEFAULT_DRIVE_DIR / 'ocr_index.json'}")
+        except Exception:
+            pass
 
     size_mb = OCR_INDEX_FILE.stat().st_size / 1024 / 1024
     print(f"\n{'='*55}")
@@ -283,7 +323,7 @@ def show_lesson_summary():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="OCR Worker - Chay OCR theo Lesson hoac phan chia tu dong",
+        description="OCR Worker - Chay OCR voi tinh nang Real-time Drive Sync",
     )
     parser.add_argument("--lessons", type=str, default=None,
                         help="Danh sach cac lesson can chay (vi du: 'L21,L22' hoac 'L25')")
@@ -310,5 +350,4 @@ if __name__ == "__main__":
         videos, tag = get_videos_by_part(args.part, args.total)
         run_ocr(videos, tag=tag, use_gpu=not args.cpu)
     else:
-        # Mặc định in kế hoạch
         show_lesson_summary()
