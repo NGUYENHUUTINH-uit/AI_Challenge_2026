@@ -455,36 +455,18 @@ print('✅ Đã cài đặt EasyOCR!')
 
 ```python
 # Cell 5: Chạy OCR theo Lesson được phân công
-# ⏱️ Script tự động lưu & resume nếu bị ngắt kết nối
-# Ví dụ:
+# 🛡️ TỰ ĐỘNG REAL-TIME SYNC VÀO GOOGLE DRIVE sau mỗi video:
+#    → Dù Colab bị ngắt kết nối / đổi máy ảo → KHÔNG BAO GIỜ MẤT DỮ LIỆU
+# 🔄 TỰ ĐỘNG RESUME: Khởi động lại → script tự nạp tiến độ cũ từ Drive và chạy tiếp
+# Ví dụ phân công:
 #   Người 1: --lessons L21,L22,L23,L24,L27,L28,L29,L30
 #   Người 2: --lessons L25
 #   Người 3: --lessons L26
-!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --lessons L21,L22,L23,L24
+!cd /content/AIC_2026 && python -m src.indexing.run_ocr_worker --lessons L21,L22,L23,L24,L27,L28,L29,L30
 ```
 
----
-
-#### B.5 Lưu kết quả về Google Drive (Cell 6)
-
-```python
-# Cell 6: Copy tất cả file partial OCR vừa tạo về Drive để không bị mất
-import shutil
-from pathlib import Path
-
-src_dir = Path('/content/AIC_2026/data/processed')
-dst_dir = Path('/content/drive/MyDrive/AIC2026/ocr_results')
-dst_dir.mkdir(parents=True, exist_ok=True)
-
-part_files = list(src_dir.glob('ocr_part_*.json'))
-for f in part_files:
-    shutil.copy2(f, dst_dir / f.name)
-    size_mb = f.stat().st_size / 1024 / 1024
-    print(f'✅ Đã lưu về Drive: {dst_dir / f.name} ({size_mb:.1f} MB)')
-
-if not part_files:
-    print('❌ Chưa có file kết quả ocr_part_*.json nào.')
-```
+> ✅ **Không cần Cell 6 nữa!** Code đã tự động đồng bộ vào `MyDrive/AIC2026/ocr_results/` sau **mỗi 1 video** hoàn thành.
+> Khi Colab bị ngắt và bạn khởi động lại, chỉ cần chạy lại Cell 1 → Cell 5, script sẽ tự nạp lại từ Drive và làm tiếp phần còn dở.
 
 ---
 
