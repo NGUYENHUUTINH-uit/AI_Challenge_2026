@@ -282,7 +282,92 @@ data/processed/
 ```
 ---
 
+## BƯỚC 3.5 — Build CLIP ViT-L/14 Index (Colab, ~30 phút T4)
+
+> **Mục đích:** Nâng cấp ViT-B/32 (512d) → ViT-L/14 (768d) → +30% accuracy.
+> **Retriever tự dùng nếu file tồn tại**, không cần sửa code.
+
+### 3.5.1 Chạy trên Colab
+
+**Cell 1 — Setup (chạy 1 lần):**
+```python
+from google.colab import userdata, drive
+GITHUB_TOKEN = userdata.get('GITHUB_TOKEN')
+REPO   = "NGUYENHUUTINH-uit/AI_Challenge_2026"
+BRANCH = "feature-A7"
+%cd /content
+!rm -rf AIC2026
+!git clone https://{GITHUB_TOKEN}@github.com/{REPO}.git AIC2026
+%cd AIC2026
+!git checkout {BRANCH}
+drive.mount('/content/drive')
+import os
+os.makedirs('data/processed', exist_ok=True)
+os.makedirs('data/btc/Keyframes', exist_ok=True)
+!pip install openai-clip faiss-gpu Pillow tqdm -q
+print("Setup OK!")
+```
+
+**Cell 2 — Copy frame map từ Drive:**
+```python
+import shutil
+shutil.copy("/content/drive/MyDrive/AIC2026/frame_index_btc.json",
+            "data/processed/frame_index_btc.json")
+print("frame_index_btc.json OK!")
+```
+
+**Cell 3 — Giải nén keyframes (dùng lại zip từ bước detect objects):**
+```python
+import zipfile
+from pathlib import Path
+kf_base = Path("data/btc/Keyframes")
+for lesson in ["L21","L22","L23","L24","L25","L26","L27","L28","L29","L30"]:
+    zip_path = f"/content/drive/MyDrive/AIC2026/keyframes_{lesson}.zip"
+    if not Path(zip_path).exists():
+        print(f"Skip {lesson} (no zip)")
+        continue
+    with zipfile.ZipFile(zip_path) as z:
+        for member in z.namelist():
+            norm = member.replace('\\', '/')
+            out_path = kf_base / norm
+            if norm.endswith('/'): out_path.mkdir(parents=True, exist_ok=True)
+            else:
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(z.read(member))
+    print(f"OK {lesson}")
+```
+
+**Cell 4 — Build index (~30 phút T4, tự lưu checkpoint mỗi 5000 frame):**
+```python
+!python src/indexing/build_vitl14_index.py \
+    --model ViT-L/14 \
+    --batch-size 256 \
+    --drive-output /content/drive/MyDrive/AIC2026/ \
+    --output data/processed/index_btc_vitl14.faiss
+# Nếu Colab crash giữa chừng: thêm --resume vào lệnh trên
+```
+
+**Cell 5 — Kiểm tra:**
+```python
+import faiss
+idx = faiss.read_index("data/processed/index_btc_vitl14.faiss")
+print(f"OK: {idx.ntotal} vectors, dim={idx.d}")  # 177321 vectors, dim=768
+```
+
+### 3.5.2 Kích hoạt Local
+
+```powershell
+# Copy file vừa tải về từ Drive vào đúng thư mục
+copy "Downloads\index_btc_vitl14.faiss" "data\processed\index_btc_vitl14.faiss"
+
+# Restart server — log sẽ hiện "ViT-L/14" khi load thành công
+uvicorn src.backend.api:app --reload --port 8000
+```
+
+---
+
 ## BƯỚC 4 — Chạy Server và Test UI
+
 
 ```powershell
 # Bật backend

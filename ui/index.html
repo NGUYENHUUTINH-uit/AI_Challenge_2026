@@ -153,6 +153,21 @@
                     </div>
                 </div>
 
+                <!-- Gemini Vision Verify Toggle -->
+                <div class="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/25 rounded-2xl">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">✨</span>
+                        <div>
+                            <p class="text-xs font-bold text-violet-600 dark:text-violet-300">Gemini Vision Verify</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Xem ảnh thật, loại false positives</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer" title="Bật để Gemini nhìn thật vào top-10 frame và chọn đúng nhất. Tốn ~2-3s thêm, cần GEMINI_API_KEY trong .env">
+                        <input type="checkbox" id="geminiVerifyToggle" class="sr-only peer">
+                        <div class="w-10 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500/50 rounded-full peer peer-checked:after:translate-x-5 peer-checked:bg-gradient-to-r peer-checked:from-violet-600 peer-checked:to-purple-600 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all shadow-inner"></div>
+                    </label>
+                </div>
+
                 <div class="flex flex-wrap gap-1.5">
                     <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('kis', 'Đoạn clip về 1 thị trấn ven biển thu hút du khách hiếu kỳ nhờ 1 loài động vật biển nguy hiểm. Loài động vật này nổi tiếng trong 1 bộ phim của đạo diễn Steven Spielberg được sản xuất vào năm 1975')">🦈 Đố phim Spielberg 1975</button>
                     <button class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700" onclick="setQuery('kis', 'Tìm một đoạn video đua xe đạp, góc quay từ flycam trên cao, một vận động viên mặc áo xanh dương, trắng đang vượt ba vận động viên khác và lên vị trí dẫn đầu.')">🚴 Đua xe đạp Flycam</button>
@@ -552,9 +567,17 @@
                 if (_currentMode === 'kis') {
                     const query = document.getElementById('kisInput').value.trim();
                     if (!query) throw new Error("Vui lòng nhập câu mô tả KIS");
+                    const geminiVerify = document.getElementById('geminiVerifyToggle').checked;
                     endpoint = '/api/v1/search/kis';
-                    payload = { query: query, top_k: topK, video_filter: videoFilter || null };
-                    document.getElementById('querySummary').textContent = `Query KIS: "${query}" ${videoFilter ? `(Chỉ trong ${videoFilter})` : ''}`;
+                    payload = {
+                        query: query,
+                        top_k: topK,
+                        video_filter: videoFilter || null,
+                        gemini_rerank: geminiVerify,
+                        gemini_rerank_top_k: 10
+                    };
+                    const verifyNote = geminiVerify ? ' ✨ [Gemini Verify ON]' : '';
+                    document.getElementById('querySummary').textContent = `Query KIS: "${query}" ${videoFilter ? `(Chỉ trong ${videoFilter})` : ''}${verifyNote}`;
                 } else if (_currentMode === 'qa') {
                     const query = document.getElementById('qaQueryInput').value.trim();
                     const question = document.getElementById('qaQuestionInput').value.trim() || query;
@@ -647,6 +670,7 @@
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono shadow-md">#${rank}</span>
                             <span class="text-[11px] font-bold text-white font-mono bg-black/50 px-2 py-0.5 rounded-md">${item.video_id}</span>
+                            ${item.gemini_score !== undefined && item.gemini_score >= 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${item.gemini_score >= 0.7 ? 'bg-violet-600 text-white' : item.gemini_score >= 0.4 ? 'bg-amber-500/80 text-white' : 'bg-slate-600/60 text-slate-300'} font-mono" title="Gemini Vision Score">✨ ${Math.round(item.gemini_score * 100)}%</span>` : ''}
                         </div>
                         <span class="text-[11px] font-extrabold text-amber-300 font-mono bg-black/60 px-2 py-0.5 rounded-md border border-amber-400/30">Frame: ${item.frame_id}</span>
                     </div>

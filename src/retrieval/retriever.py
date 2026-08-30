@@ -20,22 +20,31 @@ PROJECT_ROOT = SRC_DIR.parent.parent
 DATA_DIR     = PROJECT_ROOT / "data" / "processed"
 BTC_DIR      = PROJECT_ROOT / "data" / "btc"
 
-# Ưu tiên BTC index → self → clean
+# Ưu tiên: ViT-L/14 (nếu có) > BTC ViT-B/32 > self > clean
 _SOURCES = [
+    {
+        "faiss":     DATA_DIR / "index_btc_vitl14.faiss",  # ViT-L/14 768d — build trên Colab
+        "map":       DATA_DIR / "frame_index_btc.json",
+        "keyframes": BTC_DIR  / "Keyframes",
+        "clip_model": "ViT-L/14",  # Model tương ứng
+    },
     {
         "faiss":     DATA_DIR / "index_btc.faiss",
         "map":       DATA_DIR / "frame_index_btc.json",
         "keyframes": BTC_DIR  / "Keyframes",
+        "clip_model": "ViT-B/32",
     },
     {
         "faiss":     DATA_DIR / "index_self.faiss",
         "map":       DATA_DIR / "frame_index_self.json",
         "keyframes": DATA_DIR / "keyframes",
+        "clip_model": "ViT-B/32",
     },
     {
         "faiss":     DATA_DIR / "index_clean.faiss",
         "map":       DATA_DIR / "frame_index_clean.json",
         "keyframes": DATA_DIR / "keyframes_clean",
+        "clip_model": "ViT-B/32",
     },
 ]
 
@@ -112,14 +121,15 @@ class Retriever:
     """
 
     def __init__(self):
-        self._index        = None
-        self._frame_map    = None
-        self._model        = None
-        self._preprocess   = None
-        self._device       = None
-        self._backend      = None
-        self._keyframe_dir = None
-        self._loaded       = False
+        self._index           = None
+        self._frame_map       = None
+        self._model           = None
+        self._preprocess      = None
+        self._device          = None
+        self._backend         = None
+        self._keyframe_dir    = None
+        self._clip_model_name = None   # Auto-detected from index dim: ViT-B/32 or ViT-L/14
+        self._loaded          = False
 
     # ----------------------------------------------------------
     # LAZY LOAD \u2014 ch\u1ec9 load khi c\u00f3 tr\u1ef9 v\u1ea5n \u0111\u1ea7u ti\u00ean
@@ -140,31 +150,34 @@ class Retriever:
                 with open(src["map"], "r", encoding="utf-8") as f:
                     self._frame_map = json.load(f)
                 self._keyframe_dir = src["keyframes"]
-                print(f"[Retriever] OK \u2014 {self._index.ntotal} vectors, dim={self._index.d}")
+                self._clip_model_name = "ViT-L/14" if self._index.d == 768 else "ViT-B/32"
+                print(f"[Retriever] OK — {self._index.ntotal} vectors, dim={self._index.d}")
                 break
 
         if self._index is None:
             raise FileNotFoundError(
-                "Kh\u00f4ng t\u00ecm th\u1ea5y FAISS index. H\u00e3y ch\u1ea1y:\n"
+                "Không tìm thấy FAISS index. Hãy chạy:\n"
                 "  python run.py --stage build-self\n"
-                "(Ho\u1eb7c gi\u1ea3i n\u00e9n colab_results.zip v\u00e0o data/processed/)"
+                "(Hoặc giải nén colab_results.zip vào data/processed/)"
             )
 
-        # 2. Load CLIP model
-        print(f"[Retriever] Loading CLIP model on {self._device.upper()} ...")
+        # 2. Load CLIP model — tự động chọn đúng model theo dim của index
+        clip_model_name = self._clip_model_name or "ViT-B/32"
+        print(f"[Retriever] Loading CLIP model {clip_model_name} on {self._device.upper()} ...")
         try:
             import clip
-            self._model, self._preprocess = clip.load("ViT-B/32", device=self._device)
+            self._model, self._preprocess = clip.load(clip_model_name, device=self._device)
             self._model.eval()
             self._backend = "openai"
-            print("[Retriever] OK \u2014 openai/CLIP ViT-B/32")
+            print(f"[Retriever] OK — openai/CLIP {clip_model_name}")
         except ImportError:
             from transformers import CLIPProcessor, CLIPModel
-            self._model      = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self._device)
-            self._preprocess = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+            hf_model_id = "openai/clip-vit-large-patch14" if "L/14" in clip_model_name else "openai/clip-vit-base-patch32"
+            self._model      = CLIPModel.from_pretrained(hf_model_id).to(self._device)
+            self._preprocess = CLIPProcessor.from_pretrained(hf_model_id)
             self._model.eval()
             self._backend = "huggingface"
-            print("[Retriever] OK \u2014 HuggingFace CLIP ViT-B/32 (fallback)")
+            print(f"[Retriever] OK — HuggingFace {hf_model_id} (fallback)")
 
         self._loaded = True
 
@@ -238,16 +251,44 @@ class Retriever:
                     pass
 
         # --- Fallback: nhóm tự detect (YOLOv8m COCO) ---
-        stem     = Path(frame_name).stem
-        obj_path = OBJECTS_DIR / video_id / f"{stem}.json"
-        if not obj_path.exists():
-            return []
+        # Hỗ trợ nhiều format naming:
+        #   - 3-digit 1-indexed: 001.json (L21-L24, L26-L30) — format chuẩn
+        #   - 4-digit 0-indexed: 0000.json (L25 có cả 2 format, canonical là 3-digit)
+        stem = Path(frame_name).stem
+
+        def _read_objects(path: Path) -> list:
+            """Đọc và trả về list class từ file json. Trả về [] nếu lỗi hoặc rỗng."""
+            try:
+                with open(path, "r", encoding="utf-8") as _f:
+                    _data = json.load(_f)
+                return [d["class"] for d in _data if "class" in d]
+            except Exception:
+                return []
+
+        # Bước 1: Thử canonical file (3-digit 1-indexed: "001.json")
+        canonical = OBJECTS_DIR / video_id / f"{stem}.json"
+        if canonical.exists():
+            # File tồn tại → đây là ground truth dù rỗng (scene không có object)
+            return _read_objects(canonical)
+
+        # Bước 2: File canonical không tồn tại → thử các format thay thế
         try:
-            with open(obj_path, "r", encoding="utf-8") as f:
-                detections = json.load(f)
-            return [d["class"] for d in detections if "class" in d]
-        except Exception:
-            return []
+            idx = int(stem)
+            fallback_stems = [
+                f"{idx - 1:04d}",  # 4-digit 0-indexed: 001 → 0000 (L25 style)
+                f"{idx:04d}",      # 4-digit 1-indexed: 001 → 0001
+                f"{idx - 1:03d}",  # 3-digit 0-indexed: 001 → 000
+            ]
+            for fs in fallback_stems:
+                path = OBJECTS_DIR / video_id / f"{fs}.json"
+                if path.exists():
+                    classes = _read_objects(path)
+                    if classes:
+                        return classes
+        except ValueError:
+            pass
+
+        return []
 
     # ----------------------------------------------------------
     # SEARCH CH\u00cdNH

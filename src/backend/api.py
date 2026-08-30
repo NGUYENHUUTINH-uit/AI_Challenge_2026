@@ -56,6 +56,8 @@ class KisQueryRequest(BaseModel):
     auto_expand: Optional[bool] = True
     gemini_api_key: Optional[str] = None
     video_filter: Optional[str] = None
+    gemini_rerank: Optional[bool] = False   # Bật để dùng Gemini Vision verify top-10 frames
+    gemini_rerank_top_k: Optional[int] = 10 # Số frames Gemini verify (10=nhanh, 20=chính xác hơn)
 
 
 class QaQueryRequest(BaseModel):
@@ -64,6 +66,7 @@ class QaQueryRequest(BaseModel):
     top_k: Optional[int] = 100
     gemini_api_key: Optional[str] = None
     video_filter: Optional[str] = None
+    gemini_rerank: Optional[bool] = False   # Bật để dùng Gemini Vision verify top-10 frames
 
 
 class TrakeQueryRequest(BaseModel):
@@ -97,6 +100,12 @@ async def health_check():
     }
 
 
+class OcrSearchRequest(BaseModel):
+    query: str
+    top_k: Optional[int] = 100
+    gemini_api_key: Optional[str] = None
+
+
 @app.post("/api/v1/query/expand")
 async def expand_query_endpoint(request: QueryExpandRequest):
     """
@@ -113,6 +122,111 @@ async def expand_query_endpoint(request: QueryExpandRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tối ưu truy vấn: {str(e)}")
+
+
+# --- OCR SEARCH: Tìm kiếm thuần text/bảng số liệu trên slide ---
+@app.post("/api/v1/search/ocr")
+async def search_ocr(request: OcrSearchRequest):
+    """
+    Tìm kiếm keyframe DỰA TRÊN NỘI DUNG VĂN BẢN OCR (không dùng CLIP vector).
+    Dùng khi query mô tả bảng số liệu, chữ viết trên slide, biển hiệu, số liệu cụ thể.
+    Kết quả được merge với CLIP search để cho độ chính xác tốt hơn.
+    """
+    try:
+        from src.indexing.ocr_indexer import get_ocr_indexer, extract_potential_ocr_keywords
+        from src.retrieval.query_expander import get_expanded_query
+
+        query = request.query.strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Query không được để trống.")
+
+        # 1. Lấy OCR keywords từ query gốc (tiếng Việt domain keywords + số + chữ hoa)
+        ocr_kws = extract_potential_ocr_keywords(query)
+
+        # 2. Nếu có Gemini, dùng thêm ocr_keywords từ LLM reasoning
+        expanded_info = None
+        try:
+            expanded_info = get_expanded_query(query, api_key=request.gemini_api_key)
+            if expanded_info and expanded_info.get("ocr_keywords"):
+                for kw in expanded_info["ocr_keywords"]:
+                    if kw and kw.lower() not in [k.lower() for k in ocr_kws]:
+                        ocr_kws.append(kw)
+        except Exception:
+            pass
+
+        if not ocr_kws:
+            return {
+                "status": "success",
+                "mode": "ocr",
+                "query": query,
+                "ocr_keywords_used": [],
+                "total": 0,
+                "results": [],
+                "note": "Không trích xuất được từ khóa OCR từ câu query. Hãy thêm từ khóa cụ thể (tên riêng, số, chữ viết trên bảng)."
+            }
+
+        # 3. Tìm kiếm trong OCR index
+        ocr_indexer = get_ocr_indexer()
+        ocr_hits = ocr_indexer.search(query, top_k=request.top_k * 2)
+
+        # 4. Enrich kết quả OCR với thông tin frame từ Retriever
+        _retriever._ensure_loaded()
+        enriched = []
+        for hit in ocr_hits:
+            video_id = hit["video_id"]
+            filename = hit.get("filename", "")
+
+            # Tìm frame_id và timestamp từ frame_map
+            frame_id = None
+            timestamp = None
+            for faiss_idx_str, info in _retriever._frame_map.items():
+                if (info.get("video_id") or "").strip().upper() == video_id.strip().upper():
+                    fn = info.get("filename") or ""
+                    import pathlib
+                    if pathlib.Path(fn).name == pathlib.Path(filename).name:
+                        frame_id = info.get("frame_id") or info.get("frame_idx")
+                        if frame_id is None:
+                            n_raw = info.get("n")
+                            frame_id = int(n_raw) - 1 if n_raw is not None else 0
+                        frame_id = int(frame_id)
+                        ts = info.get("timestamp") or info.get("pts_time")
+                        timestamp = round(float(ts), 2) if ts is not None else None
+                        break
+
+            from pathlib import Path as PPath
+            img_path = str(_retriever._keyframe_dir / video_id / PPath(filename).name)
+
+            enriched.append({
+                "video_id": video_id,
+                "filename": PPath(filename).name,
+                "frame_id": frame_id,
+                "timestamp": timestamp,
+                "score": hit["ocr_score"],
+                "ocr_text": hit.get("ocr_text", ""),
+                "image_path": img_path,
+                "objects": [],
+                "matched_ocr": len([kw for kw in ocr_kws if kw.lower() in (hit.get("ocr_text") or "").lower()]),
+            })
+
+        enriched = [r for r in enriched if r["frame_id"] is not None]
+        enriched.sort(key=lambda x: -x["score"])
+        final = enriched[:request.top_k]
+
+        return {
+            "status": "success",
+            "mode": "ocr",
+            "query": query,
+            "ocr_keywords_used": ocr_kws,
+            "expanded_info": expanded_info,
+            "total": len(final),
+            "results": final,
+            "submission_csv": "\n".join(f"{r['video_id']},{r['frame_id']}" for r in final[:100] if r.get("frame_id") is not None)
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm OCR: {str(e)}")
+
 
 
 # --- 1. DẠNG BÀI 1: TEXTUAL KIS ---
@@ -156,6 +270,23 @@ async def search_kis(request: KisQueryRequest):
             extra_objects=extra_objects,
             extra_ocr_keywords=extra_ocr
         )
+
+        # --- Stage 2: Gemini Vision Re-ranker (tuỳ chọn) ---
+        gemini_used = False
+        if request.gemini_rerank:
+            try:
+                from src.retrieval.gemini_reranker import gemini_rerank_with_translation
+                reranked = gemini_rerank_with_translation(
+                    frames=reranked,
+                    query_vi=query,
+                    api_key=request.gemini_api_key,
+                    top_k=request.top_k,
+                    max_verify=request.gemini_rerank_top_k or 10,
+                )
+                gemini_used = True
+            except Exception as gr_err:
+                print(f"[API] Gemini re-rank error (fallback to CLIP): {gr_err}")
+
         final = reranked[: request.top_k]
 
         return {
@@ -164,6 +295,7 @@ async def search_kis(request: KisQueryRequest):
             "query": query,
             "search_prompt_used": search_prompt,
             "expanded_info": expanded_info,
+            "gemini_rerank_used": gemini_used,
             "total": len(final),
             "results": final,
             "submission_csv": "\n".join(f"{r['video_id']},{r['frame_id']}" for r in final[:100])
@@ -217,6 +349,21 @@ async def search_qa(request: QaQueryRequest):
             extra_objects=extra_objects,
             extra_ocr_keywords=extra_ocr
         )
+
+        # --- Stage 2: Gemini Vision Re-ranker (tuỳ chọn, cho Q&A) ---
+        if request.gemini_rerank:
+            try:
+                from src.retrieval.gemini_reranker import gemini_rerank_with_translation
+                reranked = gemini_rerank_with_translation(
+                    frames=reranked,
+                    query_vi=query,
+                    api_key=request.gemini_api_key,
+                    top_k=request.top_k,
+                    max_verify=10,
+                )
+            except Exception as gr_err:
+                print(f"[API] Gemini re-rank error (Q&A, fallback): {gr_err}")
+
         final = reranked[: request.top_k]
 
         # Sinh gợi ý đáp án sơ bộ bằng Heuristic siêu tốc (<0.005s) để trả về UI tức thì
