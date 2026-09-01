@@ -63,10 +63,15 @@ Ví dụ chuẩn mẫu:
 
 BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG JSON HỢP LỆ (KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO NGOÀI JSON):
 {
-  "visual_prompt_en": "...",
-  "core_objects_en": ["..."],
-  "ocr_keywords": ["..."],
-  "reasoning": "..."
+  "visual_prompt_en": "Câu miêu tả thị giác tổng thể ngắn gọn, súc tích (15-25 từ)",
+  "sub_prompts_en": [
+    "Prompt trọng tâm 1: Bối cảnh chính & các nhân vật cùng trang phục/màu áo",
+    "Prompt trọng tâm 2: Chi tiết đặc thù độc nhất (nón bảo hiểm, sợi dây, đồ vật, hành động)",
+    "Prompt trọng tâm 3: Góc máy hoặc bố cục hành động chính"
+  ],
+  "core_objects_en": ["object1", "object2"],
+  "ocr_keywords": ["từ_khóa_tiếng_việt_trên_ảnh_nếu_có"],
+  "reasoning": "Giải thích ngắn gọn lý do phân rã"
 }"""
 
 
@@ -177,18 +182,24 @@ def expand_query_heuristic(query: str) -> Dict[str, Any]:
     if "spielberg" in q_lower or "1975" in q_lower or "hàm cá mập" in q_lower:
         return {
             "visual_prompt_en": "curious tourists and people in coastal beach town watching great white shark, seaside crowd",
+            "sub_prompts_en": [
+                "great white shark in coastal water near beach",
+                "crowd of tourists standing on beach watching ocean",
+                "seaside town beach resort tourists looking at sea"
+            ],
             "core_objects_en": ["person", "shark", "boat"],
             "ocr_keywords": ["1975", "Spielberg"],
             "reasoning": "Suy luận từ phim Steven Spielberg 1975 → Cá mập (Jaws/Shark) kết hợp bối cảnh thị trấn biển và du khách."
         }
 
-    # === Case 2: Đua xe đạp — trích xuất chi tiết thực, KHÔNG dùng template cứng ===
-    if "đua xe đạp" in q_lower or "xe đạp" in q_lower or "chặng đua" in q_lower:
+    # === Case 2: Đua xe đạp — trích xuất chi tiết thực & phân rã sub_prompts ===
+    if "đua xe đạp" in q_lower or "xe đạp" in q_lower or "chặng đua" in q_lower or "tay đua" in q_lower:
         colors = _extract_jersey_colors(q_lower)
         actions = _extract_actions(q_lower)
 
         # Build visual prompt từ chi tiết thực
         parts = ["bicycle race"]
+        sub_prompts = []
 
         # Màu áo người dẫn đầu (áo xuất hiện đầu tiên)
         if colors:
@@ -199,12 +210,22 @@ def expand_query_heuristic(query: str) -> Dict[str, Any]:
                 other_colors = " and ".join(f"{c} jersey" for c in colors[1:])
                 jersey_desc += f", followed by {other_colors} cyclists"
             parts.append(jersey_desc)
+            sub_prompts.append(f"cyclists in {' and '.join(colors)} jerseys riding together in bicycle race")
         else:
             parts.append("cyclists in colorful jerseys")
+            sub_prompts.append("cyclists in colorful jerseys riding close together")
 
         # Hành động đặc thù
         if actions:
-            parts.append(", ".join(actions))
+            action_str = ", ".join(actions)
+            parts.append(action_str)
+            sub_prompts.append(f"cyclist {action_str} in cycling competition")
+
+        # Cận cảnh hoặc chi tiết nón/mũ bảo hiểm
+        if "nón" in q_lower or "mũ" in q_lower or "mũ bảo hiểm" in q_lower:
+            sub_prompts.append("close up of cyclist wearing helmet and jersey in bicycle race")
+        if "cận cảnh" in q_lower or "sát nhau" in q_lower:
+            sub_prompts.append("close up shot of cyclists racing closely side by side")
 
         # Ngữ cảnh về đích
         if any(kw in q_lower for kw in ["về đích", "qua đích", "lao về đích", "đích", "finish"]):
@@ -212,30 +233,37 @@ def expand_query_heuristic(query: str) -> Dict[str, Any]:
                 parts.append("at finish line")
 
         visual_prompt = ", ".join(parts)
+        if not sub_prompts:
+            sub_prompts = [visual_prompt]
 
         # Core objects
         core_objs = ["bicycle", "person", "helmet"]
 
         return {
             "visual_prompt_en": visual_prompt,
+            "sub_prompts_en": sub_prompts[:4],
             "core_objects_en": core_objs,
             "ocr_keywords": [],
-            "reasoning": f"Trích xuất từ câu gốc: màu áo={colors}, hành động={actions}. KHÔNG dùng template cứng."
+            "reasoning": f"Trích xuất từ câu gốc: màu áo={colors}, hành động={actions}. Phân rã {len(sub_prompts)} sub-prompts."
         }
 
     # === Case 3: Mặc định — giữ câu gốc, trích xuất thêm màu sắc/hành động ===
     colors = _extract_jersey_colors(q_lower)
     actions = _extract_actions(q_lower)
     core_objs = []
-    if colors:
+    if colors or "người" in q_lower:
         core_objs.append("person")
+
+    sub_prompts = [query]
+    if colors:
+        sub_prompts.append(f"person wearing {' '.join(colors)} clothes")
 
     return {
         "visual_prompt_en": query,
+        "sub_prompts_en": sub_prompts,
         "core_objects_en": core_objs,
         "ocr_keywords": [],
-        "reasoning": "Giữ nguyên câu truy vấn ban đầu (không đủ context để transform)."
-
+        "reasoning": "Giữ nguyên câu truy vấn ban đầu."
     }
 
 

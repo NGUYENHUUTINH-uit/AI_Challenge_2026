@@ -255,11 +255,42 @@ async def search_kis(request: KisQueryRequest):
             except Exception as exp_err:
                 pass
 
-        raw_results = _retriever.search_keyframes(
+        # 1. Tìm kiếm với Primary Visual Prompt
+        primary_results = _retriever.search_keyframes(
             query_text=search_prompt,
             top_k=min(request.top_k * 2, 200),
             video_filter=request.video_filter
         )
+
+        # 2. Multi-Query Fusion: Kết hợp tìm kiếm các Sub-Prompts trọng tâm
+        merged_candidates = {}
+        for r in primary_results:
+            key = (r["video_id"], r.get("filename"))
+            merged_candidates[key] = {**r, "score": float(r.get("score", 0.0))}
+
+        if expanded_info and expanded_info.get("sub_prompts_en"):
+            sub_prompts = expanded_info["sub_prompts_en"]
+            for sub_p in sub_prompts[:3]:
+                if not sub_p or sub_p == search_prompt:
+                    continue
+                try:
+                    sub_results = _retriever.search_keyframes(
+                        query_text=sub_p,
+                        top_k=80,
+                        video_filter=request.video_filter
+                    )
+                    for sr in sub_results:
+                        key = (sr["video_id"], sr.get("filename"))
+                        if key in merged_candidates:
+                            # Frame xuất hiện ở cả query chính và sub-query -> Cộng điểm thưởng lớn
+                            merged_candidates[key]["score"] += float(sr.get("score", 0.0)) * 0.40
+                        else:
+                            # Frame chỉ xuất hiện ở sub-query -> Giữ lại với hệ số 0.75
+                            merged_candidates[key] = {**sr, "score": float(sr.get("score", 0.0)) * 0.75}
+                except Exception as sq_err:
+                    pass
+
+        raw_results = sorted(merged_candidates.values(), key=lambda x: -x["score"])[:min(request.top_k * 2, 250)]
 
         extra_objects = expanded_info.get("core_objects_en", []) if expanded_info else []
         extra_ocr = expanded_info.get("ocr_keywords", []) if expanded_info else []
