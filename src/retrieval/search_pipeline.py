@@ -103,7 +103,12 @@ VIETNAMESE_OBJECT_MAP = {
     # Con người
     "người": "person", "đàn ông": "person", "nam": "person", "phụ nữ": "person",
     "nữ": "person", "cô gái": "person", "chàng trai": "person", "trẻ em": "person",
-    "em bé": "person", "học sinh": "person", "cảnh sát": "person", "bác sĩ": "person",
+    "em bé": "person", "học sinh": "person", "sinh viên": "person",
+    "cảnh sát": "person", "bác sĩ": "person",
+    "giáo viên": "person", "thầy giáo": "person", "cô giáo": "person",
+    "giáo viên nam": "person", "giáo viên nữ": "person",
+    "người dẫn chương trình": "person", "phóng viên": "person",
+    "diễn giả": "person", "thuyết trình viên": "person",
 
     # Phương tiện giao thông
     "xe máy": "motorcycle", "mô tô": "motorcycle", "xe gắn máy": "motorcycle",
@@ -121,14 +126,21 @@ VIETNAMESE_OBJECT_MAP = {
     # Đồ đạc & Phụ kiện
     "ba lô": "backpack", "balo": "backpack", "cặp": "backpack", "túi xách": "handbag",
     "túi": "handbag", "vali": "suitcase", "ô": "umbrella", "dù": "umbrella",
-    "mũ": "hat", "nón": "hat", "kính": "glasses", "cà vạt": "tie",
-    "điện thoại": "cell phone", "laptop": "laptop", "máy tính": "laptop",
+    "mũ": "hat", "nón": "hat", "kính": "glasses", "kính mắt": "glasses",
+    "kính đeo mắt": "glasses", "cà vạt": "tie",
+    "điện thoại": "cell phone", "điện thoại di động": "cell phone",
+    "laptop": "laptop", "máy tính": "laptop", "máy tính xách tay": "laptop",
+    "máy tính bảng": "laptop",
 
     # Vật dụng trong nhà
     "bàn": "dining table", "ghế": "chair", "ghế dài": "couch", "sofa": "couch",
+    "ghế sofa": "couch", "đi văng": "couch",
     "giường": "bed", "tivi": "tv", "tủ lạnh": "refrigerator", "đồng hồ": "clock",
-    "cốc": "cup", "ly": "cup", "chai": "bottle", "bình": "bottle", "bát": "bowl",
+    "cốc": "cup", "cốc nước": "cup", "ly": "cup", "ly nước": "cup",
+    "chai": "bottle", "bình": "bottle", "bát": "bowl",
     "đĩa": "bowl", "dao": "knife",
+    "bảng": "whiteboard", "bảng trắng": "whiteboard", "bảng đen": "blackboard",
+    "màn hình": "tv", "máy chiếu": "tv",
 
     # Ngoài trời & Giao thông
     "đèn giao thông": "traffic light", "đèn đỏ": "traffic light",
@@ -145,6 +157,7 @@ VIETNAMESE_OBJECT_MAP = {
     "đàn guitar": "guitar", "guitar": "guitar", "ghi ta": "guitar", "đàn violon": "violin",
     "micro": "microphone", "sân khấu": "stage", "khăn đỏ": "tie", "đồng phục": "person",
 }
+
 
 
 def extract_query_objects(query_text: str) -> list[str]:

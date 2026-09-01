@@ -28,32 +28,76 @@ def normalize_text(text: str) -> str:
     return text
 
 
+
+# Từ khóa domain đặc thù — thường xuất hiện trực tiếp trên slide/bảng
+_DOMAIN_KEYWORDS: list[tuple[str, str]] = [
+    # Địa lý / Hành chính
+    ("mạng lưới đô thị", "mạng lưới đô thị"),
+    ("đô thị", "đô thị"),
+    ("dân số đô thị", "dân số đô thị"),
+    ("tỉ lệ đô thị hóa", "tỉ lệ đô thị hóa"),
+    ("đô thị hóa", "đô thị hóa"),
+    ("phân bố đô thị", "phân bố đô thị"),
+    ("vùng kinh tế", "vùng kinh tế"),
+    ("đồng bằng sông cửu long", "đồng bằng sông cửu long"),
+    ("đồng bằng sông hồng", "đồng bằng sông hồng"),
+    ("đông nam bộ", "đông nam bộ"),
+    ("tây nguyên", "tây nguyên"),
+    ("bắc trung bộ", "bắc trung bộ"),
+    ("nam trung bộ", "nam trung bộ"),
+    ("trung du miền núi", "trung du miền núi"),
+    # Giáo dục / Bài giảng
+    ("địa lí", "địa lí"), ("địa lý", "địa lý"),
+    ("bài giảng", "bài giảng"), ("bài học", "bài học"),
+    ("bảng số liệu", "bảng số liệu"), ("số liệu", "số liệu"),
+    ("biểu đồ", "biểu đồ"), ("bản đồ", "bản đồ"),
+    # Kinh tế / Xã hội
+    ("gdp", "gdp"), ("grdp", "grdp"),
+    ("dân số", "dân số"), ("mật độ", "mật độ"),
+    ("tốc độ tăng trưởng", "tốc độ tăng trưởng"),
+    ("xuất khẩu", "xuất khẩu"), ("nhập khẩu", "nhập khẩu"),
+    ("việt nam", "việt nam"), ("viet nam", "viet nam"),
+    # Lịch sử / Thể thao
+    ("huy chương", "huy chương"), ("vô địch", "vô địch"),
+    ("sea games", "sea games"), ("asean", "asean"),
+    ("tổng bí thư", "tổng bí thư"), ("chủ tịch", "chủ tịch"),
+]
+
+
 def extract_potential_ocr_keywords(query: str) -> List[str]:
     """
     Trích xuất các từ khóa đặc thù có khả năng cao xuất hiện dưới dạng chữ/số trên ảnh:
     - Số hiệu (vd: 54, 12, 100, 2026)
     - Tên viết hoa / Thương hiệu / Tên riêng (vd: KFC, VinFast, VTV, BIDV, KOI)
-    - Cụm từ đi kèm 'chữ', 'số', 'biển', 'bảng' (vd: chữ 'VIETNAM', biển số '29A')
+    - Cụm từ đi kèm 'chữ', 'số', 'biển', 'bảng'
+    - Domain keywords: địa lý, giáo dục, kinh tế, xã hội (tiếng Việt)
     """
     if not query:
         return []
 
     keywords = []
+    q_lower = query.lower()
 
-    # 1. Tìm các chuỗi số (số tuyến bus, số áo, số nhà...)
+    # 1. Domain keywords — ưu tiên cao nhất (cụm từ dài trước)
+    for vi_kw, en_kw in sorted(_DOMAIN_KEYWORDS, key=lambda x: -len(x[0])):
+        if vi_kw in q_lower:
+            keywords.append(vi_kw)
+
+    # 2. Tìm các chuỗi số (số tuyến bus, số áo, số nhà...)
     numbers = re.findall(r"\b\d+\b", query)
-    keywords.extend(numbers)
+    # Chỉ lấy số có nghĩa (>= 2 chữ số hoặc số >= 10 để tránh match 1, 2, 3 quá chung)
+    keywords.extend([n for n in numbers if len(n) >= 2 or int(n) >= 10])
 
-    # 2. Tìm các từ viết hoa hoặc từ viết tắt trong câu gốc
+    # 3. Tìm các từ viết hoa hoặc từ viết tắt trong câu gốc
     caps = re.findall(r"\b[A-Z0-9]{2,}\b", query)
     keywords.extend(caps)
 
-    # 3. Tìm các cụm trong dấu ngoặc kép hoặc sau từ 'chữ', 'số', 'biển'
+    # 4. Tìm các cụm trong dấu ngoặc kép hoặc sau từ 'chữ', 'số', 'biển'
     quotes = re.findall(r'["\']([^"\']+)["\']', query)
     keywords.extend(quotes)
 
     patterns = [
-        r"(?:chữ|từ|biển|bảng|hiệu|số)\s+([A-Za-z0-9\s]+?)(?:[,\.\?]|$)",
+        r"(?:chữ|từ|biển|bảng|hiệu|số)\\s+([A-Za-z0-9\\s]+?)(?:[,\\.\\?]|$)",
     ]
     for p in patterns:
         matches = re.findall(p, query, flags=re.IGNORECASE)
@@ -72,6 +116,7 @@ def extract_potential_ocr_keywords(query: str) -> List[str]:
             result.append(norm)
 
     return result
+
 
 
 class OCRIndexer:
