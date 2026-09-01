@@ -308,12 +308,30 @@ os.makedirs('data/btc/Keyframes', exist_ok=True)
 print("Setup OK!")
 ```
 
-**Cell 2 — Copy frame map từ Drive:**
+**Cell 2 — Nạp file frame map (`frame_index_btc.json`):**
 ```python
-import shutil
-shutil.copy("/content/drive/MyDrive/AIC2026/frame_index_btc.json",
-            "data/processed/frame_index_btc.json")
-print("frame_index_btc.json OK!")
+import os, shutil
+from pathlib import Path
+
+drive_file = Path("/content/drive/MyDrive/AIC2026/frame_index_btc.json")
+local_dest = Path("data/processed/frame_index_btc.json")
+local_dest.parent.mkdir(parents=True, exist_ok=True)
+
+if drive_file.exists():
+    shutil.copy(drive_file, local_dest)
+    print("✅ Đã copy frame_index_btc.json từ Google Drive!")
+else:
+    print("⚠️ Chưa thấy file trên Google Drive.")
+    print("👉 Hãy upload file frame_index_btc.json từ máy tính lên (tại: data/processed/frame_index_btc.json):")
+    from google.colab import files
+    uploaded = files.upload()
+    for fn in uploaded.keys():
+        if "frame_index_btc.json" in fn:
+            shutil.move(fn, str(local_dest))
+            # Tiện thể lưu luôn lên Drive để lần sau không cần upload lại
+            if Path("/content/drive/MyDrive/AIC2026").exists():
+                shutil.copy(str(local_dest), str(drive_file))
+            print("✅ Đã nhận và lưu frame_index_btc.json thành công!")
 ```
 
 **Cell 3 — Giải nén keyframes (dùng lại zip từ bước detect objects):**
